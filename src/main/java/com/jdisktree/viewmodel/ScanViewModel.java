@@ -61,7 +61,10 @@ public class ScanViewModel {
                     index.add(rect);
                 }
 
+                long updateStart = System.currentTimeMillis();
                 updateState(s -> s.withRects(rects, index));
+                long updateEnd = System.currentTimeMillis();
+                System.out.println("State update (EDT handoff) took: " + (updateEnd - updateStart) + " ms");
 
             } catch (Exception e) {
                 updateState(s -> s.withError("Scan failed: " + e.getMessage()));

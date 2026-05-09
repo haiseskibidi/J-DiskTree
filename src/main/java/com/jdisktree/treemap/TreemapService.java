@@ -48,129 +48,102 @@ public class TreemapService {
             return;
         }
 
-        // Geometric Stop-Guard: If the container is too thin or small, stop recursing to avoid "sticks"
-        double aspectRatio = w > h ? w / h : h / w;
-        if ((double) node.size() / totalRootSize < MIN_SIZE_FRACTION || w < 10 || h < 10 || aspectRatio > 15.0) {
+        // Recursive Precision: Stop only if the block is too small to be meaningful on screen
+        if ((double) node.size() / totalRootSize < MIN_SIZE_FRACTION || w < 4 || h < 4) {
             return;
         }
 
-        List<FileNode> allChildren = node.children().stream()
+        List<FileNode> children = node.children().stream()
                 .filter(c -> c.size() > 0)
                 .sorted(Comparator.comparingLong(FileNode::size).reversed())
                 .collect(Collectors.toList());
 
-        if (allChildren.isEmpty()) return;
+        if (children.isEmpty()) return;
 
-        // Inclusive Smart Grouping: BOTH files and directories smaller than 1% are grouped
-        double groupingThreshold = 0.01; 
-        List<FileNode> significantChildren = new ArrayList<>();
-        long otherSize = 0;
-        int otherCount = 0;
-
-        for (FileNode child : allChildren) {
-            // Group if the child is smaller than 1% OR we already have too many significant items
-            if ((double) child.size() / node.size() < groupingThreshold || significantChildren.size() >= 40) {
-                otherSize += child.size();
-                otherCount++;
-            } else {
-                significantChildren.add(child);
-            }
-        }
-
-        if (otherSize > 0) {
-            significantChildren.add(FileNode.file(
-                "[" + otherCount + " others]", 
-                node.absolutePath() + "/[others]", 
-                otherSize
-            ));
-        }
-
-        // Monolithic layout: No internal padding for directories
-        double padding = 0.0; 
-        double innerX = x + padding;
-        double innerY = y + padding;
-        double innerW = w - padding * 2;
-        double innerH = h - padding * 2;
-
-        long effectiveTotalSize = significantChildren.stream().mapToLong(FileNode::size).sum();
-        squarify(significantChildren, new ArrayList<>(), new Rect(innerX, innerY, innerW, innerH), effectiveTotalSize, result, totalRootSize);
+        squarifyIterative(children, new Rect(x, y, w, h), node.size(), result, totalRootSize);
     }
 
-    private void squarify(List<FileNode> children, List<FileNode> row, Rect bounds, long totalSize, List<TreeMapRect> result, long totalRootSize) {
-        if (children.isEmpty()) {
-            if (!row.isEmpty()) {
-                layoutRow(row, bounds, totalSize, result, totalRootSize);
+    private void squarifyIterative(List<FileNode> children, Rect initialBounds, long totalSize, List<TreeMapRect> result, long totalRootSize) {
+        Rect bounds = initialBounds;
+        double remainingSize = (double) totalSize;
+        int i = 0;
+        int n = children.size();
+
+        while (i < n) {
+            List<FileNode> row = new ArrayList<>();
+            double side = Math.min(bounds.w, bounds.h);
+            double containerArea = bounds.w * bounds.h;
+            
+            double currentWorst = Double.MAX_VALUE;
+            double rowTotalSize = 0;
+
+            // Try adding elements to the row as long as the worst aspect ratio improves
+            while (i < n) {
+                FileNode nextChild = children.get(i);
+                double nextRowTotalSize = rowTotalSize + nextChild.size();
+                
+                double rowArea = (nextRowTotalSize / remainingSize) * containerArea;
+                double nextWorst = calculateWorstRatio(row, nextChild, rowArea, side, remainingSize, containerArea);
+
+                if (row.isEmpty() || currentWorst >= nextWorst) {
+                    row.add(nextChild);
+                    rowTotalSize = nextRowTotalSize;
+                    currentWorst = nextWorst;
+                    i++;
+                } else {
+                    break;
+                }
             }
-            return;
-        }
 
-        FileNode nextChild = children.get(0);
-        List<FileNode> rowWithNext = new ArrayList<>(row);
-        rowWithNext.add(nextChild);
-
-        double currentRatio = worstRatio(row, bounds, totalSize);
-        double nextRatio = worstRatio(rowWithNext, bounds, totalSize);
-
-        if (row.isEmpty() || currentRatio >= nextRatio) {
-            // Keep adding to current row
-            squarify(children.subList(1, children.size()), rowWithNext, bounds, totalSize, result, totalRootSize);
-        } else {
-            // Layout current row and start a new one in the remaining space
-            Rect remaining = layoutRow(row, bounds, totalSize, result, totalRootSize);
-            squarify(children, new ArrayList<>(), remaining, totalSize - sumSize(row), result, totalRootSize);
+            // Layout the completed row
+            bounds = layoutRowIterative(row, rowTotalSize, bounds, remainingSize, result, totalRootSize);
+            remainingSize -= rowTotalSize;
         }
     }
 
-    private double worstRatio(List<FileNode> row, Rect bounds, long totalSize) {
-        if (row.isEmpty()) return Double.MAX_VALUE;
-
-        double rowTotalSize = sumSize(row);
-        double rowArea = (rowTotalSize / totalSize) * (bounds.w * bounds.h);
-        double side = Math.min(bounds.w, bounds.h);
+    private double calculateWorstRatio(List<FileNode> row, FileNode nextChild, double rowArea, double side, double totalSize, double containerArea) {
+        double maxWeight = nextChild.size();
+        double minWeight = nextChild.size();
         
-        double maxArea = row.stream().mapToDouble(c -> (double)c.size() / totalSize * (bounds.w * bounds.h)).max().orElse(0);
-        double minArea = row.stream().mapToDouble(c -> (double)c.size() / totalSize * (bounds.w * bounds.h)).min().orElse(0);
+        for (FileNode node : row) {
+            maxWeight = Math.max(maxWeight, node.size());
+            minWeight = Math.min(minWeight, node.size());
+        }
+
+        double maxArea = (maxWeight / totalSize) * containerArea;
+        double minArea = (minWeight / totalSize) * containerArea;
 
         return Math.max(
-                (side * side * maxArea) / (rowArea * rowArea),
-                (rowArea * rowArea) / (side * side * minArea)
+            (side * side * maxArea) / (rowArea * rowArea),
+            (rowArea * rowArea) / (side * side * minArea)
         );
     }
 
-    private Rect layoutRow(List<FileNode> row, Rect bounds, long totalSize, List<TreeMapRect> result, long totalRootSize) {
-        double rowTotalSize = sumSize(row);
+    private Rect layoutRowIterative(List<FileNode> row, double rowTotalSize, Rect bounds, double totalSize, List<TreeMapRect> result, long totalRootSize) {
         double rowArea = (rowTotalSize / totalSize) * (bounds.w * bounds.h);
-        
         boolean horizontal = bounds.w >= bounds.h;
+        
         double rowWidth = horizontal ? rowArea / bounds.h : bounds.w;
         double rowHeight = horizontal ? bounds.h : rowArea / bounds.w;
 
-        double currentX = bounds.x;
-        double currentY = bounds.y;
+        double curX = bounds.x;
+        double curY = bounds.y;
+
+        double containerArea = bounds.w * bounds.h;
 
         for (FileNode child : row) {
-            double childArea = ((double) child.size() / totalSize) * (bounds.w * bounds.h);
+            double childArea = ((double) child.size() / totalSize) * containerArea;
             double childWidth = horizontal ? rowWidth : childArea / rowHeight;
             double childHeight = horizontal ? childArea / rowWidth : rowHeight;
 
-            calculateRecursive(child, currentX, currentY, childWidth, childHeight, result, totalRootSize);
+            calculateRecursive(child, curX, curY, childWidth, childHeight, result, totalRootSize);
 
-            if (horizontal) {
-                currentY += childHeight;
-            } else {
-                currentX += childWidth;
-            }
+            if (horizontal) curY += childHeight;
+            else curX += childWidth;
         }
 
-        if (horizontal) {
-            return new Rect(bounds.x + rowWidth, bounds.y, bounds.w - rowWidth, bounds.h);
-        } else {
-            return new Rect(bounds.x, bounds.y + rowHeight, bounds.w, bounds.h - rowHeight);
-        }
-    }
-
-    private long sumSize(List<FileNode> nodes) {
-        return nodes.stream().mapToLong(FileNode::size).sum();
+        if (horizontal) return new Rect(bounds.x + rowWidth, bounds.y, bounds.w - rowWidth, bounds.h);
+        else return new Rect(bounds.x, bounds.y + rowHeight, bounds.w, bounds.h - rowHeight);
     }
 
     private record Rect(double x, double y, double w, double h) {}
