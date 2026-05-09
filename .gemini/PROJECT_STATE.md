@@ -9,11 +9,15 @@
 ## Phase 2: Treemap Algorithm - [COMPLETED]
 - [x] **Geometry Models:** Implemented `TreeMapRect` record.
 - [x] **Treemap Service:** Implemented Squarified Treemap algorithm in `TreemapService`.
-    - Correct aspect ratio optimization.
-    - Recursive layout calculation.
-    - Full area coverage verification.
 - [x] **Verification:** Successful manual test (`TreemapManualTest`) with area and coordinate validation.
 
+## Phase 3: State Management (ViewModel) - [COMPLETED]
+- [x] **UI State:** Implemented `ScanStatus` enum and `UiState` record.
+- [x] **ViewModel:** Implemented `ScanViewModel` for asynchronous orchestration.
+    - Asynchronous scanning and layout calculation using `CompletableFuture`.
+    - Throttled progress updates (~30 FPS) for UI performance.
+    - Thread-safe state updates using a reactive observer pattern.
+- [x] **Verification:** Successful manual test (`ViewModelManualTest`) confirming state transitions (IDLE -> SCANNING -> CALCULATING -> COMPLETED).
+
 ## Next Steps
-- **Phase 3: State Management (ViewModel):** Integrating scanner and treemap with UI state (MVI/MVVM).
 - **Phase 4: Compose UI Rendering:** Canvas-based rendering of the file tree.
