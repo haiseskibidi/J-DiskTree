@@ -51,6 +51,9 @@ public class ScanViewModel {
 
                 FileNode root = scanner.scan(path);
                 
+                // Final progress update before switching to calculation
+                updateState(currentState.withProgress(scanner.getProgress()));
+                
                 updateState(currentState.calculating());
 
                 List<TreeMapRect> rects = treemapService.calculateLayout(root, 0, 0, width, height);

@@ -33,7 +33,14 @@ public class TreemapService {
     }
 
     private void calculateRecursive(FileNode node, double x, double y, double w, double h, List<TreeMapRect> result) {
-        result.add(new TreeMapRect(node.absolutePath(), x, y, w, h, node.isDirectory()));
+        String extension = "";
+        if (!node.isDirectory()) {
+            int dotIndex = node.name().lastIndexOf('.');
+            if (dotIndex > 0 && dotIndex < node.name().length() - 1) {
+                extension = node.name().substring(dotIndex + 1).toLowerCase();
+            }
+        }
+        result.add(new TreeMapRect(node.absolutePath(), x, y, w, h, node.isDirectory(), extension));
 
         if (!node.isDirectory() || node.children().isEmpty()) {
             return;

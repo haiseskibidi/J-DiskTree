@@ -10,7 +10,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
@@ -21,7 +25,7 @@ import com.jdisktree.viewmodel.ScanViewModel
 import java.nio.file.Paths
 
 fun main() = application {
-    val windowState = rememberWindowState(width = 1024.dp, height = 768.dp)
+    val windowState = rememberWindowState(width = 1200.dp, height = 900.dp)
     
     Window(
         onCloseRequest = ::exitApplication,
@@ -37,6 +41,8 @@ fun App() {
     var uiState by remember { mutableStateOf(UiState.idle()) }
     val viewModel = remember { ScanViewModel { newState -> uiState = newState } }
     var pathText by remember { mutableStateOf("C:\\") }
+    var hoveredRect by remember { mutableStateOf<TreeMapRect?>(null) }
+    var mousePosition by remember { mutableStateOf(Offset.Zero) }
 
     MaterialTheme {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -70,7 +76,20 @@ fun App() {
             // Main Content: Treemap or Progress
             Box(modifier = Modifier.weight(1f).fillMaxWidth().border(1.dp, Color.Gray)) {
                 if (uiState.rects().isNotEmpty()) {
-                    TreemapCanvas(uiState.rects())
+                    TreemapCanvas(
+                        rects = uiState.rects(),
+                        onHover = { rect, pos -> 
+                            hoveredRect = rect
+                            mousePosition = pos
+                        }
+                    )
+                    
+                    // Tooltip
+                    hoveredRect?.let { rect ->
+                        if (!rect.isDirectory) {
+                            Tooltip(rect, mousePosition)
+                        }
+                    }
                 } else if (uiState.status() == ScanStatus.SCANNING || uiState.status() == ScanStatus.CALCULATING_TREEMAP) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 } else if (uiState.status() == ScanStatus.IDLE) {
@@ -88,7 +107,9 @@ fun StatusBanner(state: UiState) {
             Text("Status: ${state.status()}", style = MaterialTheme.typography.subtitle1)
             state.progress()?.let { p ->
                 Text("Files: ${p.filesScanned()} | Scanned: ${formatSize(p.bytesScanned())}")
-                Text("Current: ${p.currentPath()}", style = MaterialTheme.typography.caption, maxLines = 1)
+                if (state.status() == ScanStatus.SCANNING || state.status() == ScanStatus.CALCULATING_TREEMAP) {
+                    Text("Current: ${p.currentPath()}", style = MaterialTheme.typography.caption, maxLines = 1)
+                }
             }
             state.errorMessage()?.let { err ->
                 Text("Error: $err", color = Color.Red)
@@ -97,37 +118,111 @@ fun StatusBanner(state: UiState) {
     }
 }
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-fun TreemapCanvas(rects: List<TreeMapRect>) {
-    Canvas(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        val canvasWidth = size.width
-        val canvasHeight = size.height
+fun TreemapCanvas(rects: List<TreeMapRect>, onHover: (TreeMapRect?, Offset) -> Unit) {
+    var canvasSize by remember { mutableStateOf(Size.Zero) }
+    var currentHovered by remember { mutableStateOf<TreeMapRect?>(null) }
 
-        // Note: Coordinates in rects are calculated for 1000x1000 grid
-        val scaleX = canvasWidth / 1000f
-        val scaleY = canvasHeight / 1000f
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF1E1E1E))
+            .onPointerEvent(PointerEventType.Move) { event ->
+                val pos = event.changes.first().position
+                val scaleX = canvasSize.width / 1000f
+                val scaleY = canvasSize.height / 1000f
+                
+                val found = rects.find { rect ->
+                    !rect.isDirectory &&
+                    pos.x >= rect.x() * scaleX &&
+                    pos.x <= (rect.x() + rect.width()) * scaleX &&
+                    pos.y >= rect.y() * scaleY &&
+                    pos.y <= (rect.y() + rect.height()) * scaleY
+                }
+                currentHovered = found
+                onHover(found, pos)
+            }
+            .onPointerEvent(PointerEventType.Exit) {
+                currentHovered = null
+                onHover(null, Offset.Zero)
+            }
+    ) {
+        canvasSize = size
+        val scaleX = size.width / 1000f
+        val scaleY = size.height / 1000f
 
         rects.forEach { rect ->
-            // Draw only leaf nodes or files for clarity in this first pass
             if (!rect.isDirectory) {
                 val drawX = rect.x().toFloat() * scaleX
                 val drawY = rect.y().toFloat() * scaleY
                 val drawW = rect.width().toFloat() * scaleX
                 val drawH = rect.height().toFloat() * scaleY
 
+                val isHovered = rect == currentHovered
+                val baseColor = getColorForExtension(rect.extension())
+                val color = if (isHovered) baseColor.copy(alpha = 0.8f) else baseColor
+
                 drawRect(
-                    color = Color(0xFF42A5F5), // Material Blue 400
+                    color = color,
                     topLeft = Offset(drawX, drawY),
                     size = Size(drawW, drawH)
                 )
-                drawRect(
-                    color = Color.White,
-                    topLeft = Offset(drawX, drawY),
-                    size = Size(drawW, drawH),
-                    style = Stroke(width = 1f)
-                )
+                
+                if (isHovered) {
+                    drawRect(
+                        color = Color.White,
+                        topLeft = Offset(drawX, drawY),
+                        size = Size(drawW, drawH),
+                        style = Stroke(width = 2f)
+                    )
+                } else {
+                    drawRect(
+                        color = Color(0x33FFFFFF),
+                        topLeft = Offset(drawX, drawY),
+                        size = Size(drawW, drawH),
+                        style = Stroke(width = 0.5f)
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+fun Tooltip(rect: TreeMapRect, position: Offset) {
+    Popup(
+        alignment = Alignment.TopStart,
+        offset = IntOffset(position.x.toInt() + 15, position.y.toInt() + 15)
+    ) {
+        Card(
+            backgroundColor = Color(0xFF333333),
+            contentColor = Color.White,
+            elevation = 4.dp,
+            modifier = Modifier.widthIn(max = 400.dp)
+        ) {
+            Column(modifier = Modifier.padding(8.dp)) {
+                val fileName = Paths.get(rect.path()).fileName?.toString() ?: "Unknown"
+                Text(fileName, style = MaterialTheme.typography.subtitle2)
+                Text("Path: ${rect.path()}", style = MaterialTheme.typography.caption)
+                if (rect.extension().isNotEmpty()) {
+                    Text("Type: ${rect.extension().uppercase()}", style = MaterialTheme.typography.caption)
+                }
+            }
+        }
+    }
+}
+
+fun getColorForExtension(ext: String): Color {
+    return when (ext.lowercase()) {
+        "exe", "dll", "sys", "msi" -> Color(0xFFE57373) // Reddish - System/Binary
+        "jpg", "jpeg", "png", "gif", "bmp", "svg" -> Color(0xFF81C784) // Greenish - Images
+        "mp4", "mkv", "avi", "mov", "flv" -> Color(0xFF64B5F6) // Blueish - Video
+        "mp3", "wav", "flac", "ogg" -> Color(0xFFBA68C8) // Purple - Audio
+        "pdf", "doc", "docx", "txt", "rtf", "md" -> Color(0xFFFFB74D) // Orange - Docs
+        "zip", "rar", "7z", "tar", "gz" -> Color(0xFFA1887F) // Brown - Archives
+        "java", "kt", "py", "cpp", "c", "js", "html", "css" -> Color(0xFF4DB6AC) // Teal - Code
+        else -> Color(0xFF90A4AE) // Grey - Others
     }
 }
 

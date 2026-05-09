@@ -20,7 +20,11 @@
 - [x] **Infrastructure:** Configured Gradle with Compose Multiplatform support.
 - [x] **Main UI:** Implemented `Main.kt` with Material Design components.
 - [x] **Visualization:** Created `TreemapCanvas` for drawing pre-calculated rectangles.
-- [x] **State Integration:** Connected ViewModel to Compose state for real-time updates.
+
+## Phase 5: Visual Polish & Interactivity - [COMPLETED]
+- [x] **Coloring:** Implemented file-type coloring based on extensions.
+- [x] **Interaction:** Added mouse tracking and high-performance highlighting on `Canvas`.
+- [x] **Information:** Implemented tooltips using Compose `Popup` to display file details.
 
 ## Summary
-The core prototype of J-DiskTree is functional. The application can scan a directory, track progress in real-time, calculate a squarified treemap layout, and visualize it on a Canvas.
+J-DiskTree is now a complete, interactive disk space analyzer. It combines a high-performance Java backend with a modern, reactive Kotlin UI.

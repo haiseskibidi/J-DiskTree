@@ -9,6 +9,7 @@ package com.jdisktree.domain;
  * @param width       Width of the rectangle.
  * @param height      Height of the rectangle.
  * @param isDirectory True if this node represents a directory.
+ * @param extension   The file extension (empty for directories or files without extension).
  */
 public record TreeMapRect(
         String path,
@@ -16,5 +17,6 @@ public record TreeMapRect(
         double y,
         double width,
         double height,
-        boolean isDirectory
+        boolean isDirectory,
+        String extension
 ) {}

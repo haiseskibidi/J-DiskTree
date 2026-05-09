@@ -41,6 +41,10 @@ public class DiskScannerService {
         return pool.invoke(new ScanTask(rootPath));
     }
 
+    public ScanProgress getProgress() {
+        return new ScanProgress(totalFiles.get(), totalBytes.get(), "");
+    }
+
     private class ScanTask extends RecursiveTask<FileNode> {
         private final Path path;
 
