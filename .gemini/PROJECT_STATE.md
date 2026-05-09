@@ -26,5 +26,10 @@
 - [x] **Interaction:** Added mouse tracking and high-performance highlighting on `Canvas`.
 - [x] **Information:** Implemented tooltips using Compose `Popup` to display file details.
 
+## Phase 6: Native Directory Picker - [COMPLETED]
+- [x] **Picker Utility:** Implemented `DirectoryPicker` using `JFileChooser`.
+- [x] **UI Integration:** Added "Browse" button to the toolbar for folder selection.
+- [x] **Verification:** Successfully tested directory selection and scanning flow.
+
 ## Summary
-J-DiskTree is now a complete, interactive disk space analyzer. It combines a high-performance Java backend with a modern, reactive Kotlin UI.
+J-DiskTree is now a complete, interactive, and user-friendly disk space analyzer. It features a high-performance backend, a reactive UI, and native system integrations for folder selection.

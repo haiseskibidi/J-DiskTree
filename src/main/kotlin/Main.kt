@@ -21,6 +21,7 @@ import androidx.compose.ui.window.rememberWindowState
 import com.jdisktree.domain.TreeMapRect
 import com.jdisktree.state.ScanStatus
 import com.jdisktree.state.UiState
+import com.jdisktree.ui.DirectoryPicker
 import com.jdisktree.viewmodel.ScanViewModel
 import java.nio.file.Paths
 
@@ -55,6 +56,15 @@ fun App() {
                     label = { Text("Directory Path") },
                     singleLine = true
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+                OutlinedButton(
+                    onClick = { 
+                        DirectoryPicker.pickDirectory()?.let { pathText = it }
+                    },
+                    enabled = uiState.status() != ScanStatus.SCANNING && uiState.status() != ScanStatus.CALCULATING_TREEMAP
+                ) {
+                    Text("Browse")
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = { 
