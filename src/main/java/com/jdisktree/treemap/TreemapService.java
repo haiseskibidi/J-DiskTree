@@ -24,15 +24,17 @@ public class TreemapService {
      * @param height Container height.
      * @return List of calculated rectangles.
      */
+    private static final double MIN_SIZE_FRACTION = 0.001; // 0.1% threshold for recursion
+
     public List<TreeMapRect> calculateLayout(FileNode root, double x, double y, double width, double height) {
-        List<TreeMapRect> result = new ArrayList<>();
+        List<TreeMapRect> result = new ArrayList<>(1024); 
         if (root.size() == 0) return result;
 
-        calculateRecursive(root, x, y, width, height, result);
+        calculateRecursive(root, x, y, width, height, result, root.size());
         return result;
     }
 
-    private void calculateRecursive(FileNode node, double x, double y, double w, double h, List<TreeMapRect> result) {
+    private void calculateRecursive(FileNode node, double x, double y, double w, double h, List<TreeMapRect> result, long totalRootSize) {
         String extension = "";
         if (!node.isDirectory()) {
             int dotIndex = node.name().lastIndexOf('.');
@@ -40,26 +42,32 @@ public class TreemapService {
                 extension = node.name().substring(dotIndex + 1).toLowerCase();
             }
         }
-        result.add(new TreeMapRect(node.absolutePath(), x, y, w, h, node.isDirectory(), extension));
+        result.add(new TreeMapRect(node.absolutePath(), x, y, w, h, node.isDirectory(), extension, node.size()));
 
         if (!node.isDirectory() || node.children().isEmpty()) {
+            return;
+        }
+
+        // Aggressive Optimization: Skip deep recursion for very small areas
+        if ((double) node.size() / totalRootSize < MIN_SIZE_FRACTION) {
             return;
         }
 
         List<FileNode> children = node.children().stream()
                 .filter(c -> c.size() > 0)
                 .sorted(Comparator.comparingLong(FileNode::size).reversed())
+                .limit(200) // Limit to 200 largest children to keep UI performant
                 .collect(Collectors.toList());
 
         if (children.isEmpty()) return;
 
-        squarify(children, new ArrayList<>(), new Rect(x, y, w, h), node.size(), result);
+        squarify(children, new ArrayList<>(), new Rect(x, y, w, h), node.size(), result, totalRootSize);
     }
 
-    private void squarify(List<FileNode> children, List<FileNode> row, Rect bounds, long totalSize, List<TreeMapRect> result) {
+    private void squarify(List<FileNode> children, List<FileNode> row, Rect bounds, long totalSize, List<TreeMapRect> result, long totalRootSize) {
         if (children.isEmpty()) {
             if (!row.isEmpty()) {
-                layoutRow(row, bounds, totalSize, result);
+                layoutRow(row, bounds, totalSize, result, totalRootSize);
             }
             return;
         }
@@ -73,11 +81,11 @@ public class TreemapService {
 
         if (row.isEmpty() || currentRatio >= nextRatio) {
             // Keep adding to current row
-            squarify(children.subList(1, children.size()), rowWithNext, bounds, totalSize, result);
+            squarify(children.subList(1, children.size()), rowWithNext, bounds, totalSize, result, totalRootSize);
         } else {
             // Layout current row and start a new one in the remaining space
-            Rect remaining = layoutRow(row, bounds, totalSize, result);
-            squarify(children, new ArrayList<>(), remaining, totalSize - sumSize(row), result);
+            Rect remaining = layoutRow(row, bounds, totalSize, result, totalRootSize);
+            squarify(children, new ArrayList<>(), remaining, totalSize - sumSize(row), result, totalRootSize);
         }
     }
 
@@ -97,7 +105,7 @@ public class TreemapService {
         );
     }
 
-    private Rect layoutRow(List<FileNode> row, Rect bounds, long totalSize, List<TreeMapRect> result) {
+    private Rect layoutRow(List<FileNode> row, Rect bounds, long totalSize, List<TreeMapRect> result, long totalRootSize) {
         double rowTotalSize = sumSize(row);
         double rowArea = (rowTotalSize / totalSize) * (bounds.w * bounds.h);
         
@@ -113,7 +121,7 @@ public class TreemapService {
             double childWidth = horizontal ? rowWidth : childArea / rowHeight;
             double childHeight = horizontal ? childArea / rowWidth : rowHeight;
 
-            calculateRecursive(child, currentX, currentY, childWidth, childHeight, result);
+            calculateRecursive(child, currentX, currentY, childWidth, childHeight, result, totalRootSize);
 
             if (horizontal) {
                 currentY += childHeight;

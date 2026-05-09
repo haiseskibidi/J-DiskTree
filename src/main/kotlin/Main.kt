@@ -96,9 +96,7 @@ fun App() {
                     
                     // Tooltip
                     hoveredRect?.let { rect ->
-                        if (!rect.isDirectory) {
-                            Tooltip(rect, mousePosition)
-                        }
+                        Tooltip(rect, mousePosition)
                     }
                 } else if (uiState.status() == ScanStatus.SCANNING || uiState.status() == ScanStatus.CALCULATING_TREEMAP) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -143,8 +141,7 @@ fun TreemapCanvas(rects: List<TreeMapRect>, onHover: (TreeMapRect?, Offset) -> U
                 val scaleX = canvasSize.width / 1000f
                 val scaleY = canvasSize.height / 1000f
                 
-                val found = rects.find { rect ->
-                    !rect.isDirectory &&
+                val found = rects.findLast { rect ->
                     pos.x >= rect.x() * scaleX &&
                     pos.x <= (rect.x() + rect.width()) * scaleX &&
                     pos.y >= rect.y() * scaleY &&
@@ -168,6 +165,9 @@ fun TreemapCanvas(rects: List<TreeMapRect>, onHover: (TreeMapRect?, Offset) -> U
                 val drawY = rect.y().toFloat() * scaleY
                 val drawW = rect.width().toFloat() * scaleX
                 val drawH = rect.height().toFloat() * scaleY
+
+                // Culling: Don't draw if too small to see
+                if (drawW < 0.5f || drawH < 0.5f) return@forEach
 
                 val isHovered = rect == currentHovered
                 val baseColor = getColorForExtension(rect.extension())
@@ -214,8 +214,11 @@ fun Tooltip(rect: TreeMapRect, position: Offset) {
             Column(modifier = Modifier.padding(8.dp)) {
                 val fileName = Paths.get(rect.path()).fileName?.toString() ?: "Unknown"
                 Text(fileName, style = MaterialTheme.typography.subtitle2)
+                Text("Size: ${formatSize(rect.size())}", style = MaterialTheme.typography.body2, color = Color(0xFF81C784))
                 Text("Path: ${rect.path()}", style = MaterialTheme.typography.caption)
-                if (rect.extension().isNotEmpty()) {
+                if (rect.isDirectory) {
+                    Text("Type: DIRECTORY", style = MaterialTheme.typography.caption)
+                } else if (rect.extension().isNotEmpty()) {
                     Text("Type: ${rect.extension().uppercase()}", style = MaterialTheme.typography.caption)
                 }
             }
