@@ -5,11 +5,14 @@ import com.jdisktree.domain.TreeMapRect;
 import com.jdisktree.scanner.DiskScannerService;
 import com.jdisktree.state.UiState;
 import com.jdisktree.treemap.TreemapService;
+import com.jdisktree.treemap.index.SpatialGridIndex;
 
+import javax.swing.SwingUtilities;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 /**
  * ViewModel that orchestrates disk scanning and treemap calculation.
@@ -19,58 +22,62 @@ public class ScanViewModel {
 
     private final TreemapService treemapService = new TreemapService();
     private final Consumer<UiState> stateObserver;
-    private UiState currentState = UiState.idle();
+    private volatile UiState currentState = UiState.idle();
     private long lastProgressUpdate = 0;
 
     public ScanViewModel(Consumer<UiState> stateObserver) {
         this.stateObserver = stateObserver;
-        updateState(currentState);
+        emitState(currentState);
     }
 
-    /**
-     * Starts the scanning process for the given path.
-     * Execution is asynchronous and does not block the caller.
-     *
-     * @param path   The directory to scan.
-     * @param width  The target width for the treemap.
-     * @param height The target height for the treemap.
-     */
     public void startScan(Path path, double width, double height) {
-        updateState(UiState.idle().withProgress(null)); // Set status to SCANNING
+        updateState(s -> UiState.idle().withProgress(null)); 
 
         CompletableFuture.runAsync(() -> {
             try {
                 DiskScannerService scanner = new DiskScannerService(progress -> {
                     long now = System.currentTimeMillis();
-                    // Throttle updates to ~30 FPS to avoid UI stutter
-                    if (now - lastProgressUpdate > 33) {
-                        updateState(currentState.withProgress(progress));
+                    if (now - lastProgressUpdate > 50) { // Slightly more relaxed throttling
+                        updateState(s -> s.withProgress(progress));
                         lastProgressUpdate = now;
                     }
                 });
 
+                long scanStart = System.currentTimeMillis();
                 FileNode root = scanner.scan(path);
+                long scanEnd = System.currentTimeMillis();
+                System.out.println("Scan completed in: " + (scanEnd - scanStart) + " ms. Nodes: " + scanner.getProgress().filesScanned());
                 
-                // Final progress update before switching to calculation
-                updateState(currentState.withProgress(scanner.getProgress()));
-                
-                updateState(currentState.calculating());
+                updateState(s -> s.withProgress(scanner.getProgress()).calculating());
 
+                long treemapStart = System.currentTimeMillis();
                 List<TreeMapRect> rects = treemapService.calculateLayout(root, 0, 0, width, height);
+                long treemapEnd = System.currentTimeMillis();
+                System.out.println("Treemap calculation completed in: " + (treemapEnd - treemapStart) + " ms. Rects: " + rects.size());
                 
-                updateState(currentState.withRects(rects));
+                // Build Spatial Index
+                SpatialGridIndex index = new SpatialGridIndex(100, 100, width, height);
+                for (TreeMapRect rect : rects) {
+                    index.add(rect);
+                }
+
+                updateState(s -> s.withRects(rects, index));
 
             } catch (Exception e) {
-                updateState(currentState.withError("Scan failed: " + e.getMessage()));
+                updateState(s -> s.withError("Scan failed: " + e.getMessage()));
                 e.printStackTrace();
             }
         });
     }
 
-    private synchronized void updateState(UiState newState) {
-        this.currentState = newState;
+    private synchronized void updateState(UnaryOperator<UiState> updateFn) {
+        this.currentState = updateFn.apply(this.currentState);
+        emitState(this.currentState);
+    }
+
+    private void emitState(UiState state) {
         if (stateObserver != null) {
-            stateObserver.accept(newState);
+            SwingUtilities.invokeLater(() -> stateObserver.accept(state));
         }
     }
 
