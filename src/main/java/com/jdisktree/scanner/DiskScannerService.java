@@ -4,113 +4,104 @@ import com.jdisktree.domain.FileNode;
 
 import java.io.IOException;
 import java.nio.file.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.RecursiveTask;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Service for high-performance multi-threaded disk scanning using Java NIO and ForkJoinPool.
+ * High-performance disk scanner using java.nio.file.Files.walkFileTree.
+ * Designed for speed and minimal memory footprint.
  */
 public class DiskScannerService {
 
-    private final ForkJoinPool pool;
     private final ScanProgressListener listener;
     private final AtomicLong totalFiles = new AtomicLong(0);
     private final AtomicLong totalBytes = new AtomicLong(0);
 
     public DiskScannerService(ScanProgressListener listener) {
-        this(ForkJoinPool.commonPool(), listener);
-    }
-
-    public DiskScannerService(ForkJoinPool pool, ScanProgressListener listener) {
-        this.pool = pool;
         this.listener = listener;
     }
 
     /**
      * Scans the given path and returns the root FileNode.
-     *
-     * @param rootPath The path to start scanning from.
-     * @return The immutable tree of FileNodes.
+     * Uses a single-pass bottom-up tree building algorithm.
      */
-    public FileNode scan(Path rootPath) {
+    public FileNode scan(Path rootPath) throws IOException {
         totalFiles.set(0);
         totalBytes.set(0);
-        return pool.invoke(new ScanTask(rootPath));
+
+        final FileNode[] rootResult = new FileNode[1];
+        Map<Path, List<FileNode>> childrenMap = new HashMap<>();
+        Map<Path, Long> sizeMap = new HashMap<>();
+
+        Files.walkFileTree(rootPath, EnumSet.noneOf(FileVisitOption.class), Integer.MAX_VALUE, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                childrenMap.put(dir, new ArrayList<>(32));
+                sizeMap.put(dir, 0L);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (Files.isSymbolicLink(file)) return FileVisitResult.CONTINUE;
+
+                long size = attrs.size();
+                String name = file.getFileName() != null ? file.getFileName().toString() : file.toString();
+                FileNode node = FileNode.file(name, file.toAbsolutePath().toString(), size);
+                
+                Path parent = file.getParent();
+                if (parent != null && childrenMap.containsKey(parent)) {
+                    childrenMap.get(parent).add(node);
+                    sizeMap.put(parent, sizeMap.get(parent) + size);
+                }
+
+                totalFiles.incrementAndGet();
+                totalBytes.addAndGet(size);
+                
+                long currentCount = totalFiles.get();
+                if (currentCount % 100 == 0) {
+                    updateProgress(file.toAbsolutePath().toString());
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
+                List<FileNode> children = childrenMap.remove(dir);
+                long size = sizeMap.remove(dir);
+                String name = dir.getFileName() != null ? dir.getFileName().toString() : dir.toString();
+                
+                FileNode dirNode = FileNode.directory(name, dir.toAbsolutePath().toString(), size, children);
+
+                Path parent = dir.getParent();
+                if (parent != null && childrenMap.containsKey(parent)) {
+                    childrenMap.get(parent).add(dirNode);
+                    sizeMap.put(parent, sizeMap.get(parent) + size);
+                }
+
+                if (dir.equals(rootPath)) {
+                    rootResult[0] = dirNode;
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                return FileVisitResult.CONTINUE;
+            }
+        });
+
+        return rootResult[0];
     }
 
     public ScanProgress getProgress() {
         return new ScanProgress(totalFiles.get(), totalBytes.get(), "");
     }
 
-    private class ScanTask extends RecursiveTask<FileNode> {
-        private final Path path;
-
-        ScanTask(Path path) {
-            this.path = path;
-        }
-
-        @Override
-        protected FileNode compute() {
-            String name = path.getFileName() != null ? path.getFileName().toString() : path.toString();
-            String absolutePath = path.toAbsolutePath().toString();
-
-            if (Files.isSymbolicLink(path)) {
-                return FileNode.file(name, absolutePath, 0);
-            }
-
-            if (Files.isDirectory(path)) {
-                List<ScanTask> subTasks = new ArrayList<>();
-                List<FileNode> children = new ArrayList<>();
-                long dirSize = 0;
-
-                try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
-                    for (Path entry : stream) {
-                        ScanTask task = new ScanTask(entry);
-                        task.fork();
-                        subTasks.add(task);
-                    }
-                } catch (AccessDeniedException e) {
-                    // System-protected folder, skip silently as per mandate
-                    return FileNode.directory(name, absolutePath, 0, List.of());
-                } catch (IOException e) {
-                    // Log or handle other IO errors
-                    return FileNode.directory(name, absolutePath, 0, List.of());
-                }
-
-                for (ScanTask task : subTasks) {
-                    FileNode child = task.join();
-                    children.add(child);
-                    dirSize += child.size();
-                }
-
-                updateProgress(absolutePath);
-                return FileNode.directory(name, absolutePath, dirSize, children);
-            } else {
-                long size = 0;
-                try {
-                    size = Files.size(path);
-                } catch (IOException e) {
-                    // Ignore inaccessible file size
-                }
-                totalFiles.incrementAndGet();
-                totalBytes.addAndGet(size);
-                updateProgress(absolutePath);
-                return FileNode.file(name, absolutePath, size);
-            }
-        }
-
-        private void updateProgress(String currentPath) {
-            if (listener != null) {
-                // Throttling or strategic updates could be added here
-                listener.onProgress(new ScanProgress(
-                        totalFiles.get(),
-                        totalBytes.get(),
-                        currentPath
-                ));
-            }
+    private void updateProgress(String currentPath) {
+        if (listener != null) {
+            listener.onProgress(new ScanProgress(totalFiles.get(), totalBytes.get(), currentPath));
         }
     }
 }
