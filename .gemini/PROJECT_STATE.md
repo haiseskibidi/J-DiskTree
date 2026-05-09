@@ -8,16 +8,19 @@
 
 ## Phase 2: Treemap Algorithm - [COMPLETED]
 - [x] **Geometry Models:** Implemented `TreeMapRect` record.
-- [x] **Treemap Service:** Implemented Squarified Treemap algorithm in `TreemapService`.
-- [x] **Verification:** Successful manual test (`TreemapManualTest`) with area and coordinate validation.
+- [x] **Treemap Service:** Implemented Squarified Treemap algorithm.
+- [x] **Verification:** Successful manual test with area validation.
 
 ## Phase 3: State Management (ViewModel) - [COMPLETED]
 - [x] **UI State:** Implemented `ScanStatus` enum and `UiState` record.
 - [x] **ViewModel:** Implemented `ScanViewModel` for asynchronous orchestration.
-    - Asynchronous scanning and layout calculation using `CompletableFuture`.
-    - Throttled progress updates (~30 FPS) for UI performance.
-    - Thread-safe state updates using a reactive observer pattern.
-- [x] **Verification:** Successful manual test (`ViewModelManualTest`) confirming state transitions (IDLE -> SCANNING -> CALCULATING -> COMPLETED).
+- [x] **Verification:** Successful manual test confirming state transitions.
 
-## Next Steps
-- **Phase 4: Compose UI Rendering:** Canvas-based rendering of the file tree.
+## Phase 4: Compose UI Rendering - [COMPLETED]
+- [x] **Infrastructure:** Configured Gradle with Compose Multiplatform support.
+- [x] **Main UI:** Implemented `Main.kt` with Material Design components.
+- [x] **Visualization:** Created `TreemapCanvas` for drawing pre-calculated rectangles.
+- [x] **State Integration:** Connected ViewModel to Compose state for real-time updates.
+
+## Summary
+The core prototype of J-DiskTree is functional. The application can scan a directory, track progress in real-time, calculate a squarified treemap layout, and visualize it on a Canvas.
