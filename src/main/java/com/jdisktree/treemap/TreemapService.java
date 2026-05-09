@@ -24,10 +24,10 @@ public class TreemapService {
      * @param height Container height.
      * @return List of calculated rectangles.
      */
-    private static final double MIN_SIZE_FRACTION = 0.001; // 0.1% threshold for recursion
+    private static final double MIN_SIZE_FRACTION = 0.0001; // 0.01% threshold - show more details
 
     public List<TreeMapRect> calculateLayout(FileNode root, double x, double y, double width, double height) {
-        List<TreeMapRect> result = new ArrayList<>(1024); 
+        List<TreeMapRect> result = new ArrayList<>(2048); 
         if (root.size() == 0) return result;
 
         calculateRecursive(root, x, y, width, height, result, root.size());
@@ -48,20 +48,52 @@ public class TreemapService {
             return;
         }
 
-        // Aggressive Optimization: Skip deep recursion for very small areas
-        if ((double) node.size() / totalRootSize < MIN_SIZE_FRACTION) {
+        // Geometric Stop-Guard: If the container is too thin or small, stop recursing to avoid "sticks"
+        double aspectRatio = w > h ? w / h : h / w;
+        if ((double) node.size() / totalRootSize < MIN_SIZE_FRACTION || w < 10 || h < 10 || aspectRatio > 15.0) {
             return;
         }
 
-        List<FileNode> children = node.children().stream()
+        List<FileNode> allChildren = node.children().stream()
                 .filter(c -> c.size() > 0)
                 .sorted(Comparator.comparingLong(FileNode::size).reversed())
-                .limit(200) // Limit to 200 largest children to keep UI performant
                 .collect(Collectors.toList());
 
-        if (children.isEmpty()) return;
+        if (allChildren.isEmpty()) return;
 
-        squarify(children, new ArrayList<>(), new Rect(x, y, w, h), node.size(), result, totalRootSize);
+        // Inclusive Smart Grouping: BOTH files and directories smaller than 1% are grouped
+        double groupingThreshold = 0.01; 
+        List<FileNode> significantChildren = new ArrayList<>();
+        long otherSize = 0;
+        int otherCount = 0;
+
+        for (FileNode child : allChildren) {
+            // Group if the child is smaller than 1% OR we already have too many significant items
+            if ((double) child.size() / node.size() < groupingThreshold || significantChildren.size() >= 40) {
+                otherSize += child.size();
+                otherCount++;
+            } else {
+                significantChildren.add(child);
+            }
+        }
+
+        if (otherSize > 0) {
+            significantChildren.add(FileNode.file(
+                "[" + otherCount + " others]", 
+                node.absolutePath() + "/[others]", 
+                otherSize
+            ));
+        }
+
+        // Monolithic layout: No internal padding for directories
+        double padding = 0.0; 
+        double innerX = x + padding;
+        double innerY = y + padding;
+        double innerW = w - padding * 2;
+        double innerH = h - padding * 2;
+
+        long effectiveTotalSize = significantChildren.stream().mapToLong(FileNode::size).sum();
+        squarify(significantChildren, new ArrayList<>(), new Rect(innerX, innerY, innerW, innerH), effectiveTotalSize, result, totalRootSize);
     }
 
     private void squarify(List<FileNode> children, List<FileNode> row, Rect bounds, long totalSize, List<TreeMapRect> result, long totalRootSize) {

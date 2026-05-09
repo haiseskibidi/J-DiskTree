@@ -147,6 +147,7 @@ fun TreemapCanvas(
             val scaleX = canvasSize.width / 1000f
             val scaleY = canvasSize.height / 1000f
 
+            // 1. Draw all files (monolithic data layer)
             rects.forEach { rect ->
                 if (!rect.isDirectory) {
                     val drawX = rect.x().toFloat() * scaleX
@@ -154,18 +155,56 @@ fun TreemapCanvas(
                     val drawW = rect.width().toFloat() * scaleX
                     val drawH = rect.height().toFloat() * scaleY
 
-                    if (drawW >= 0.5f && drawH >= 0.5f) {
+                    // Ensure minimum visible size
+                    val finalW = if (drawW < 1.0f) 1.0f else drawW
+                    val finalH = if (drawH < 1.0f) 1.0f else drawH
+
+                    val baseColor = getColorForExtension(rect.extension())
+                    
+                    // Adaptive visual style based on size
+                    val isTiny = finalW < 3f || finalH < 3f
+                    
+                    if (isTiny) {
+                        // Draw only solid color for tiny items to avoid border-clutter
+                        val paint = Paint().apply { color = baseColor }
+                        canvas.drawRect(androidx.compose.ui.geometry.Rect(drawX, drawY, drawX + finalW, drawY + finalH), paint)
+                    } else {
+                        // Main body with subtle vertical gradient for larger items
                         val paint = Paint().apply {
-                            color = getColorForExtension(rect.extension())
+                            shader = LinearGradientShader(
+                                from = Offset(drawX, drawY),
+                                to = Offset(drawX, drawY + finalH),
+                                colors = listOf(
+                                    baseColor.copy(alpha = 1f),
+                                    baseColor.copy(red = baseColor.red * 0.85f, green = baseColor.green * 0.85f, blue = baseColor.blue * 0.85f)
+                                )
+                            )
                         }
-                        canvas.drawRect(androidx.compose.ui.geometry.Rect(drawX, drawY, drawX + drawW, drawY + drawH), paint)
+                        canvas.drawRect(androidx.compose.ui.geometry.Rect(drawX, drawY, drawX + finalW, drawY + finalH), paint)
                         
-                        val strokePaint = Paint().apply {
-                            color = Color(0x33FFFFFF)
+                        // 3D Bevel and Border (only for visible items)
+                        val lightPaint = Paint().apply {
+                            color = Color.White.copy(alpha = 0.2f)
+                            strokeWidth = 1f
                             style = PaintingStyle.Stroke
-                            strokeWidth = 0.5f
                         }
-                        canvas.drawRect(androidx.compose.ui.geometry.Rect(drawX, drawY, drawX + drawW, drawY + drawH), strokePaint)
+                        canvas.drawLine(Offset(drawX, drawY), Offset(drawX + finalW, drawY), lightPaint)
+                        canvas.drawLine(Offset(drawX, drawY), Offset(drawX, drawY + finalH), lightPaint)
+
+                        val darkPaint = Paint().apply {
+                            color = Color.Black.copy(alpha = 0.3f)
+                            strokeWidth = 1f
+                            style = PaintingStyle.Stroke
+                        }
+                        canvas.drawLine(Offset(drawX, drawY + finalH), Offset(drawX + finalW, drawY + finalH), darkPaint)
+                        canvas.drawLine(Offset(drawX + finalW, drawY), Offset(drawX + finalW, drawY + finalH), darkPaint)
+
+                        val borderPaint = Paint().apply {
+                            color = Color.Black.copy(alpha = 0.2f)
+                            strokeWidth = 0.5f
+                            style = PaintingStyle.Stroke
+                        }
+                        canvas.drawRect(androidx.compose.ui.geometry.Rect(drawX, drawY, drawX + finalW, drawY + finalH), borderPaint)
                     }
                 }
             }
@@ -217,11 +256,19 @@ fun TreemapCanvas(
             val drawW = rect.width().toFloat() * scaleX
             val drawH = rect.height().toFloat() * scaleY
 
+            // Glowing overlay
+            drawRect(
+                color = Color.White.copy(alpha = 0.2f),
+                topLeft = Offset(drawX, drawY),
+                size = Size(drawW, drawH)
+            )
+            
+            // Thick white border
             drawRect(
                 color = Color.White,
                 topLeft = Offset(drawX, drawY),
                 size = Size(drawW, drawH),
-                style = Stroke(width = 2f)
+                style = Stroke(width = 3f)
             )
         }
     }
@@ -231,23 +278,29 @@ fun TreemapCanvas(
 fun Tooltip(rect: TreeMapRect, position: Offset) {
     Popup(
         alignment = Alignment.TopStart,
-        offset = IntOffset(position.x.toInt() + 15, position.y.toInt() + 15)
+        offset = IntOffset(
+            x = if (position.x > 800) (position.x - 320).toInt() else (position.x + 15).toInt(),
+            y = if (position.y > 600) (position.y - 120).toInt() else (position.y + 15).toInt()
+        )
     ) {
         Card(
             backgroundColor = Color(0xFF333333),
             contentColor = Color.White,
-            elevation = 4.dp,
-            modifier = Modifier.widthIn(max = 400.dp)
+            elevation = 8.dp,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+            modifier = Modifier.widthIn(max = 300.dp).border(1.dp, Color(0xFF555555), androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
         ) {
-            Column(modifier = Modifier.padding(8.dp)) {
+            Column(modifier = Modifier.padding(12.dp)) {
                 val fileName = Paths.get(rect.path()).fileName?.toString() ?: "Unknown"
-                Text(fileName, style = MaterialTheme.typography.subtitle2)
-                Text("Size: ${formatSize(rect.size())}", style = MaterialTheme.typography.body2, color = Color(0xFF81C784))
-                Text("Path: ${rect.path()}", style = MaterialTheme.typography.caption)
+                Text(fileName, style = MaterialTheme.typography.subtitle2, color = Color.White)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Size: ${formatSize(rect.size())}", style = MaterialTheme.typography.body2, color = Color(0xFF81C784), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(rect.path(), style = MaterialTheme.typography.caption, color = Color.LightGray, maxLines = 3)
                 if (rect.isDirectory) {
-                    Text("Type: DIRECTORY", style = MaterialTheme.typography.caption)
+                    Text("Type: DIRECTORY", style = MaterialTheme.typography.caption, color = Color(0xFF42A5F5))
                 } else if (rect.extension().isNotEmpty()) {
-                    Text("Type: ${rect.extension().uppercase()}", style = MaterialTheme.typography.caption)
+                    Text("Type: ${rect.extension().uppercase()}", style = MaterialTheme.typography.caption, color = Color(0xFFFFA726))
                 }
             }
         }
@@ -256,14 +309,14 @@ fun Tooltip(rect: TreeMapRect, position: Offset) {
 
 fun getColorForExtension(ext: String): Color {
     return when (ext.lowercase()) {
-        "exe", "dll", "sys", "msi" -> Color(0xFFE57373) // Reddish - System/Binary
-        "jpg", "jpeg", "png", "gif", "bmp", "svg" -> Color(0xFF81C784) // Greenish - Images
-        "mp4", "mkv", "avi", "mov", "flv" -> Color(0xFF64B5F6) // Blueish - Video
-        "mp3", "wav", "flac", "ogg" -> Color(0xFFBA68C8) // Purple - Audio
-        "pdf", "doc", "docx", "txt", "rtf", "md" -> Color(0xFFFFB74D) // Orange - Docs
-        "zip", "rar", "7z", "tar", "gz" -> Color(0xFFA1887F) // Brown - Archives
-        "java", "kt", "py", "cpp", "c", "js", "html", "css" -> Color(0xFF4DB6AC) // Teal - Code
-        else -> Color(0xFF90A4AE) // Grey - Others
+        "exe", "dll", "sys", "msi", "com" -> Color(0xFFEF5350) // Soft Red - System
+        "jpg", "jpeg", "png", "gif", "bmp", "svg", "webp" -> Color(0xFF66BB6A) // Soft Green - Images
+        "mp4", "mkv", "avi", "mov", "flv", "webm" -> Color(0xFF42A5F5) // Soft Blue - Video
+        "mp3", "wav", "flac", "ogg", "m4a" -> Color(0xFFAB47BC) // Soft Purple - Audio
+        "pdf", "doc", "docx", "txt", "rtf", "md", "odt", "xls", "xlsx" -> Color(0xFFFFA726) // Soft Orange - Docs
+        "zip", "rar", "7z", "tar", "gz", "bz2" -> Color(0xFF8D6E63) // Soft Brown - Archives
+        "java", "kt", "py", "cpp", "c", "js", "html", "css", "ts", "json", "xml" -> Color(0xFF26A69A) // Teal - Code
+        else -> Color(0xFF78909C) // Blue Grey - Others
     }
 }
 
