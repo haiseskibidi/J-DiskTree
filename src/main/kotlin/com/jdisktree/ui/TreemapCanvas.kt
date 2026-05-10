@@ -19,7 +19,8 @@ import com.jdisktree.treemap.index.SpatialGridIndex
 fun TreemapCanvas(
     rects: List<TreeMapRect>,
     index: SpatialGridIndex?,
-    onHover: (TreeMapRect?, Offset) -> Unit
+    onHover: (TreeMapRect?, Offset) -> Unit,
+    onClick: (String) -> Unit
 ) {
     var canvasSize by remember { mutableStateOf(Size.Zero) }
     var currentHovered by remember { mutableStateOf<TreeMapRect?>(null) }
@@ -128,6 +129,9 @@ fun TreemapCanvas(
             .onPointerEvent(PointerEventType.Exit) {
                 currentHovered = null
                 onHover(null, Offset.Zero)
+            }
+            .onPointerEvent(PointerEventType.Press) {
+                currentHovered?.let { onClick(it.path()) }
             }
     ) {
         canvasSize = size
