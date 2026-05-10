@@ -10,6 +10,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import com.jdisktree.domain.TreeMapRect
 import com.jdisktree.treemap.index.SpatialGridIndex
@@ -19,21 +20,25 @@ import com.jdisktree.treemap.index.SpatialGridIndex
 fun TreemapCanvas(
     rects: List<TreeMapRect>,
     index: SpatialGridIndex?,
+    selectedPath: String?,
+    baseWidth: Double,
+    baseHeight: Double,
     onHover: (TreeMapRect?, Offset) -> Unit,
-    onClick: (String) -> Unit
+    onClick: (String) -> Unit,
+    onSecondaryClick: (String, Offset) -> Unit
 ) {
     var canvasSize by remember { mutableStateOf(Size.Zero) }
     var currentHovered by remember { mutableStateOf<TreeMapRect?>(null) }
 
-    val treemapBitmap = remember(rects, canvasSize) {
+    val treemapBitmap = remember(rects, canvasSize, baseWidth, baseHeight) {
         if (canvasSize.width <= 0 || canvasSize.height <= 0 || rects.isEmpty()) null
         else {
             val bitmap = ImageBitmap(canvasSize.width.toInt(), canvasSize.height.toInt())
             val canvas = Canvas(bitmap)
-            val scaleX = canvasSize.width / 1000f
-            val scaleY = canvasSize.height / 1000f
+            val scaleX = canvasSize.width / baseWidth.toFloat()
+            val scaleY = canvasSize.height / baseHeight.toFloat()
 
-            // 1. Draw all directory backgrounds (provides a clean base color for gaps)
+            // 1. Draw all directory backgrounds
             rects.forEach { rect ->
                 if (rect.isDirectory) {
                     val drawX = rect.x().toFloat() * scaleX
@@ -41,7 +46,6 @@ fun TreemapCanvas(
                     val drawW = rect.width().toFloat() * scaleX
                     val drawH = rect.height().toFloat() * scaleY
 
-                    // Subtle folder color (slightly lighter than global background)
                     val paint = Paint().apply { color = Color(0xFF242424) }
                     canvas.drawRect(androidx.compose.ui.geometry.Rect(drawX, drawY, drawX + drawW, drawY + drawH), paint)
                 }
@@ -89,13 +93,6 @@ fun TreemapCanvas(
                         }
                         canvas.drawLine(Offset(drawX, drawY + drawH), Offset(drawX + drawW, drawY + drawH), darkPaint)
                         canvas.drawLine(Offset(drawX + drawW, drawY), Offset(drawX + drawW, drawY + drawH), darkPaint)
-
-                        val borderPaint = Paint().apply {
-                            color = Color.Black.copy(alpha = 0.2f)
-                            strokeWidth = 0.5f
-                            style = PaintingStyle.Stroke
-                        }
-                        canvas.drawRect(androidx.compose.ui.geometry.Rect(drawX, drawY, drawX + drawW, drawY + drawH), borderPaint)
                     }
                 }
             }
@@ -109,8 +106,8 @@ fun TreemapCanvas(
             .background(Color(0xFF1E1E1E))
             .onPointerEvent(PointerEventType.Move) { event ->
                 val pos = event.changes.first().position
-                val scaleX = canvasSize.width / 1000f
-                val scaleY = canvasSize.height / 1000f
+                val scaleX = canvasSize.width / baseWidth.toFloat()
+                val scaleY = canvasSize.height / baseHeight.toFloat()
                 
                 val indexX = pos.x / scaleX
                 val indexY = pos.y / scaleY
@@ -130,8 +127,17 @@ fun TreemapCanvas(
                 currentHovered = null
                 onHover(null, Offset.Zero)
             }
-            .onPointerEvent(PointerEventType.Press) {
-                currentHovered?.let { onClick(it.path()) }
+            .onPointerEvent(PointerEventType.Press) { event ->
+                val change = event.changes.first()
+                if (change.pressed) {
+                    currentHovered?.let { 
+                        if (event.buttons.isSecondaryPressed) {
+                            onSecondaryClick(it.path(), change.position)
+                        } else {
+                            onClick(it.path())
+                        }
+                    }
+                }
             }
     ) {
         canvasSize = size
@@ -140,9 +146,10 @@ fun TreemapCanvas(
             drawImage(it)
         }
 
+        val scaleX = size.width / baseWidth.toFloat()
+        val scaleY = size.height / baseHeight.toFloat()
+
         currentHovered?.let { rect ->
-            val scaleX = size.width / 1000f
-            val scaleY = size.height / 1000f
             val drawX = rect.x().toFloat() * scaleX
             val drawY = rect.y().toFloat() * scaleY
             val drawW = rect.width().toFloat() * scaleX
@@ -160,6 +167,35 @@ fun TreemapCanvas(
                 size = Size(drawW, drawH),
                 style = Stroke(width = 3f)
             )
+        }
+
+        // Draw selection highlight - make it pop!
+        if (selectedPath != null) {
+            rects.find { it.path() == selectedPath }?.let { rect ->
+                val drawX = rect.x().toFloat() * scaleX
+                val drawY = rect.y().toFloat() * scaleY
+                val drawW = rect.width().toFloat() * scaleX
+                val drawH = rect.height().toFloat() * scaleY
+
+                drawRect(
+                    color = Color.White.copy(alpha = 0.35f),
+                    topLeft = Offset(drawX, drawY),
+                    size = Size(drawW, drawH)
+                )
+                
+                drawRect(
+                    color = Color.Black.copy(alpha = 0.5f),
+                    topLeft = Offset(drawX, drawY),
+                    size = Size(drawW, drawH),
+                    style = Stroke(width = 6f)
+                )
+                drawRect(
+                    color = Color.White,
+                    topLeft = Offset(drawX, drawY),
+                    size = Size(drawW, drawH),
+                    style = Stroke(width = 3f)
+                )
+            }
         }
     }
 }

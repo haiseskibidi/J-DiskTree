@@ -3,6 +3,7 @@ package com.jdisktree.viewmodel;
 import com.jdisktree.domain.FileNode;
 import com.jdisktree.domain.TreeMapRect;
 import com.jdisktree.scanner.DiskScannerService;
+import com.jdisktree.scanner.FileOperationsService;
 import com.jdisktree.state.UiState;
 import com.jdisktree.treemap.TreemapService;
 import com.jdisktree.treemap.index.SpatialGridIndex;
@@ -21,6 +22,7 @@ import java.util.function.UnaryOperator;
 public class ScanViewModel {
 
     private final TreemapService treemapService = new TreemapService();
+    private final FileOperationsService fileOps = new FileOperationsService();
     private final Consumer<UiState> stateObserver;
     private volatile UiState currentState = UiState.idle();
     private long lastProgressUpdate = 0;
@@ -28,6 +30,51 @@ public class ScanViewModel {
     public ScanViewModel(Consumer<UiState> stateObserver) {
         this.stateObserver = stateObserver;
         emitState(currentState);
+    }
+
+    public void openInExplorer(String path) {
+        fileOps.openInExplorer(path);
+    }
+
+    public void copyPath(String path) {
+        fileOps.copyToClipboard(path);
+    }
+
+    public void moveToTrash(String path, double width, double height) {
+        CompletableFuture.runAsync(() -> {
+            fileOps.moveToTrash(path);
+            // Always prune from UI to ensure the view stays in sync with reality
+            applyPruning(path, width, height);
+        });
+    }
+
+    public void deletePermanently(String path, double width, double height) {
+        CompletableFuture.runAsync(() -> {
+            fileOps.deletePermanently(path);
+            applyPruning(path, width, height);
+        });
+    }
+
+    private void applyPruning(String targetPath, double width, double height) {
+        FileNode currentRoot = currentState.rootNode();
+        if (currentRoot == null) return;
+
+        FileNode newRoot = currentRoot.prune(targetPath);
+        
+        if (newRoot == null) {
+            updateState(s -> UiState.idle());
+            return;
+        }
+
+        // Recalculate layout for the new pruned tree
+        List<TreeMapRect> rects = treemapService.calculateLayout(newRoot, 0, 0, width, height);
+        SpatialGridIndex index = new SpatialGridIndex(100, 100, width, height);
+        for (TreeMapRect rect : rects) {
+            index.add(rect);
+        }
+
+        // IMPORTANT: We must update the state with the NEW root node so the Tree View reflects changes
+        updateState(s -> s.withRects(rects, index, newRoot));
     }
 
     public void startScan(Path path, double width, double height) {

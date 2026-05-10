@@ -31,9 +31,6 @@ public class TreemapService {
     }
 
     private void calculateRecursive(FileNode node, double x, double y, double w, double h, List<TreeMapRect> result) {
-        // PHYSICAL RECURSION CLIPPING
-        // Stop completely if the allocated space is too thin (prevents slivers and barcode lines).
-        // The empty space will naturally be filled by the parent directory's background color.
         if (w < 3.0 || h < 3.0) {
             return;
         }
@@ -45,19 +42,23 @@ public class TreemapService {
             return;
         }
 
+        // Calculate visible size for this specific layout pass
         double areaPerByte = (w * h) / (double) node.size();
-
-        List<FileNode> allChildren = node.children().stream()
+        List<FileNode> visibleChildren = node.children().stream()
                 .filter(c -> c.size() > 0 && (c.size() * areaPerByte) >= 1.0)
                 .sorted(Comparator.comparingLong(FileNode::size).reversed())
-                .collect(Collectors.toList());
+                .toList();
 
-        if (allChildren.isEmpty()) {
+        if (visibleChildren.isEmpty()) {
             return;
         }
 
+        // IMPORTANT: Use the sum of visible children as the base for layout
+        // to ensure they collectively fill exactly w * h.
+        long visibleTotalSize = visibleChildren.stream().mapToLong(FileNode::size).sum();
+
         SquarifiedAlgorithm.compute(
-            allChildren, x, y, w, h, node.size(),
+            visibleChildren, x, y, w, h, visibleTotalSize,
             (childNode, cx, cy, cw, ch) -> calculateRecursive(childNode, cx, cy, cw, ch, result)
         );
     }

@@ -2,11 +2,7 @@ package com.jdisktree.ui
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.material.darkColors
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +22,14 @@ fun App() {
     var hoveredRect by remember { mutableStateOf<TreeMapRect?>(null) }
     var mousePosition by remember { mutableStateOf(Offset.Zero) }
     var selectedPath by remember { mutableStateOf<String?>(null) }
+    var contextMenuPath by remember { mutableStateOf<String?>(null) }
+    var contextMenuOffset by remember { mutableStateOf(Offset.Zero) }
+    var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
+    var showProperties by remember { mutableStateOf<String?>(null) }
+    
+    // Store container dimensions for re-layouts after deletion
+    var containerWidth by remember { mutableStateOf(1000.0) }
+    var containerHeight by remember { mutableStateOf(1000.0) }
 
     MaterialTheme(colors = darkColors()) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colors.background) {
@@ -42,7 +46,7 @@ fun App() {
                 StatusBanner(uiState)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Box(modifier = Modifier.weight(1f).fillMaxWidth().border(1.dp, Color.Gray)) {
+                BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth().border(1.dp, Color.Gray)) {
                     if (uiState.rects().isNotEmpty()) {
                         Row(modifier = Modifier.fillMaxSize()) {
                             // Left Panel: Synchronized File Tree View
@@ -50,7 +54,11 @@ fun App() {
                                 FileTreeView(
                                     rootNode = uiState.rootNode(),
                                     selectedPath = selectedPath,
-                                    onSelect = { selectedPath = it }
+                                    onSelect = { selectedPath = it },
+                                    onSecondaryClick = { path: String, offset: Offset ->
+                                        contextMenuPath = path
+                                        contextMenuOffset = offset
+                                    }
                                 )
                             }
 
@@ -59,12 +67,19 @@ fun App() {
                                 TreemapCanvas(
                                     rects = uiState.rects(),
                                     index = uiState.index(),
+                                    selectedPath = selectedPath,
+                                    baseWidth = 1000.0, // Consistent logical system
+                                    baseHeight = 1000.0,
                                     onHover = { rect, pos -> 
                                         hoveredRect = rect
                                         mousePosition = pos
                                     },
                                     onClick = { path ->
                                         selectedPath = path
+                                    },
+                                    onSecondaryClick = { path, offset ->
+                                        contextMenuPath = path
+                                        contextMenuOffset = offset
                                     }
                                 )
                                 
@@ -78,8 +93,42 @@ fun App() {
                     } else if (uiState.status() == ScanStatus.IDLE) {
                         Text("Select a directory and press 'Scan'", modifier = Modifier.align(Alignment.Center))
                     }
+
+                    // Global Context Menu
+                    contextMenuPath?.let { path ->
+                        Box(modifier = Modifier.offset(contextMenuOffset.x.dp, contextMenuOffset.y.dp)) {
+                            FileContextMenu(
+                                path = path,
+                                onDismiss = { contextMenuPath = null },
+                                onOpenExplorer = { viewModel.openInExplorer(path) },
+                                onCopyPath = { viewModel.copyPath(path) },
+                                onMoveToTrash = { viewModel.moveToTrash(path, 1000.0, 1000.0) },
+                                onDeletePermanently = { showDeleteConfirm = path },
+                                onShowProperties = { showProperties = path }
+                            )
+                        }
+                    }
                 }
             }
+        }
+
+        // Dialogs
+        showDeleteConfirm?.let { path ->
+            DeleteConfirmationDialog(
+                path = path,
+                onConfirm = { 
+                    viewModel.deletePermanently(path, 1000.0, 1000.0)
+                    showDeleteConfirm = null
+                },
+                onDismiss = { showDeleteConfirm = null }
+            )
+        }
+
+        showProperties?.let { path ->
+            PropertiesDialog(
+                path = path,
+                onDismiss = { showProperties = null }
+            )
         }
     }
 }

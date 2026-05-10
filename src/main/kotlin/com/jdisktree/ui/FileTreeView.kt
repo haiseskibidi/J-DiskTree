@@ -16,6 +16,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
 import com.jdisktree.domain.FileNode
 import java.nio.file.Paths
 
@@ -25,11 +29,13 @@ data class FlatNode(
     val isExpanded: Boolean
 )
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun FileTreeView(
     rootNode: FileNode?,
     selectedPath: String?,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
+    onSecondaryClick: (String, Offset) -> Unit
 ) {
     if (rootNode == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -127,15 +133,22 @@ fun FileTreeView(
                         .padding(vertical = 1.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(if (isSelected) Color(0xFF388E3C).copy(alpha = 0.4f) else Color.Transparent)
-                        .clickable {
-                            if (node.isDirectory) {
-                                expandedPaths = if (flatNode.isExpanded) {
-                                    expandedPaths - node.absolutePath()
+                        .onPointerEvent(PointerEventType.Press) { event ->
+                            val change = event.changes.first()
+                            if (change.pressed) {
+                                if (event.buttons.isSecondaryPressed) {
+                                    onSecondaryClick(node.absolutePath(), change.position)
                                 } else {
-                                    expandedPaths + node.absolutePath()
+                                    if (node.isDirectory) {
+                                        expandedPaths = if (flatNode.isExpanded) {
+                                            expandedPaths - node.absolutePath()
+                                        } else {
+                                            expandedPaths + node.absolutePath()
+                                        }
+                                    }
+                                    onSelect(node.absolutePath())
                                 }
                             }
-                            onSelect(node.absolutePath())
                         }
                         .padding(start = (flatNode.level * 16 + 4).dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
