@@ -22,9 +22,18 @@ compose.desktop {
     application {
         mainClass = "MainKt"
         nativeDistributions {
-            targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg, org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi, org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb)
+            targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi)
             packageName = "J-DiskTree"
             packageVersion = "1.0.0"
+            vendor = "J-DiskTree Team"
+            description = "High-performance disk space analyzer"
+            
+            windows {
+                shortcut = true // Create desktop shortcut
+                menu = true     // Create Start Menu entry
+                menuGroup = "J-DiskTree"
+                upgradeUuid = "8e9f5b61-4d3e-4f5c-8b2a-1c5d6e7f89ab" // Valid hexadecimal UUID
+            }
         }
     }
 }

@@ -15,5 +15,11 @@
 - **Synchronization**: Added bi-directional sync. Clicking a rectangle in the Treemap automatically highlights the node in the tree and auto-scrolls to the top-level parent folder ("Root + 1" level) to provide macro-context.
 - **UI Polish**: Enforced Material Dark Theme globally across the application, resolving white-on-white text issues. Added a vertical scrollbar to the tree view for easy navigation.
 
+## Phase 12: Release & Distribution - [COMPLETED]
+- [x] **Distribution Config:** Updated `build.gradle.kts` to enable automatic Desktop and Start Menu shortcuts during installation.
+- [x] **Stability:** Fixed invalid `upgradeUuid` which caused MSI bundler failures. 
+- [x] **Documentation:** Created professional `README.md` and tagged version `v1.0.0`.
+- [x] **Final Build:** Confirmed successful generation of `J-DiskTree-1.0.0.msi`.
+
 ## Summary
-J-DiskTree has undergone a core architectural refactor to support massive file systems. By combining native NIO scanning with aggressive visual pruning and strict thread-safe state management, the application now delivers professional-grade performance. The UI and layout layers have been fully modularized, adhering to SOLID principles. The rendering engine now uses physical canvas constraints to intelligently group files, providing a pristine, glitch-free visualization alongside a synchronized, dark-themed hierarchical file tree.
+J-DiskTree is now a production-ready disk space analyzer. It features a world-class parallel scanning engine with cycle protection, a modern modular UI with bi-directional synchronization, and full support for file management and localization. The application is fully packaged for Windows with automatic shortcuts and persistent user settings.

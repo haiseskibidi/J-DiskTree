@@ -12,6 +12,14 @@ High-performance disk space analyzer and visualizer built with Java 21 and Compo
 - **Multi-language Support**: Full support for English and Russian.
 - **Persistent Preferences**: Remembers your theme, language, and layout settings.
 
+## Screenshots
+
+### Main Interface (Dark Theme)
+![General View](screenshots/screen1.png)
+
+### Extension Highlighting & File Tree
+![Highlighting](screenshots/screen2.png)
+
 ## Getting Started
 
 ### Prerequisites
