@@ -32,11 +32,12 @@ data class FlatNode(
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun FileTreeView(
-    rootNode: FileNode?,
+    stableRoot: StableFileTree,
     selectedPath: String?,
     onSelect: (String) -> Unit,
     onSecondaryClick: (String, Offset) -> Unit
 ) {
+    val rootNode = stableRoot.root
     if (rootNode == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(stringResource("no_data"), color = Color.Gray)

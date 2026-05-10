@@ -10,7 +10,7 @@ import com.jdisktree.treemap.index.SpatialGridIndex
 
 @Composable
 fun TreemapWithTooltip(
-    rects: List<TreeMapRect>,
+    stableData: StableTreemapData,
     index: SpatialGridIndex?,
     selectedPath: String?,
     highlightedExtension: String?,
@@ -23,7 +23,7 @@ fun TreemapWithTooltip(
 
     Box(modifier = Modifier.fillMaxSize()) {
         TreemapCanvas(
-            rects = rects,
+            rects = stableData.rects,
             index = index,
             selectedPath = selectedPath,
             highlightedExtension = highlightedExtension,

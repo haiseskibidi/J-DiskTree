@@ -21,5 +21,10 @@
 - [x] **Documentation:** Created professional `README.md` and tagged version `v1.0.0`.
 - [x] **Final Build:** Confirmed successful generation of `J-DiskTree-1.0.0.msi`.
 
+## Phase 13: UI Performance & Resizing Optimization - [COMPLETED]
+- [x] **State Isolation:** Implemented `@Stable LayoutWeights` class to isolate panel resizing state from the main `App` component, preventing full-screen recompositions on every mouse move.
+- [x] **Stability Wrappers:** Introduced `@Immutable StableFileTree` and `StableTreemapData` to wrap Java records. This fixed the "unstable argument" issue in Compose, allowing heavy components like `FileTreeView` to properly skip recomposition.
+- [x] **Lag Elimination:** Verified that the File Tree no longer lags during dynamic scaling, as the expensive tree-flattening logic is now only triggered by actual data changes, not UI layout updates.
+
 ## Summary
 J-DiskTree is now a production-ready disk space analyzer. It features a world-class parallel scanning engine with cycle protection, a modern modular UI with bi-directional synchronization, and full support for file management and localization. The application is fully packaged for Windows with automatic shortcuts and persistent user settings.

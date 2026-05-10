@@ -42,9 +42,8 @@ fun App(
     var highlightedExtension by remember { mutableStateOf<String?>(null) }
     var showTypeStats by remember { mutableStateOf(showTypeStatsInitial) }
     
-    // Panel weights
-    var treeWeight by remember { mutableStateOf(treeWeightInitial) }
-    var statsWeight by remember { mutableStateOf(statsWeightInitial) }
+    // Panel weights (ISOLATED via @Stable class)
+    val weights = remember { LayoutWeights(treeWeightInitial, statsWeightInitial) }
     var resizingSide by remember { mutableStateOf(ResizingSide.NONE) }
 
     // --- STABLE CALLBACKS ---
@@ -55,6 +54,9 @@ fun App(
         contextMenuOffset = offset
     } }
     val onStatsSelect = remember { { ext: String? -> highlightedExtension = ext } }
+
+    val stableRoot = remember(uiState.rootNode()) { StableFileTree(uiState.rootNode()) }
+    val stableRects = remember(uiState.rects()) { StableTreemapData(uiState.rects()) }
 
     // Theme logic
     val systemAccentColor = remember(systemAccentColorHex) {
@@ -128,48 +130,44 @@ fun App(
                                         if (resizingSide != ResizingSide.NONE) {
                                             val mouseX = event.changes.first().position.x
                                             if (resizingSide == ResizingSide.TREE) {
-                                                treeWeight = (mouseX / totalWidth).coerceIn(0.1f, 0.5f)
+                                                weights.treeWeight = (mouseX / totalWidth).coerceIn(0.1f, 0.5f)
                                             } else if (resizingSide == ResizingSide.STATS) {
-                                                statsWeight = ((totalWidth - mouseX) / totalWidth).coerceIn(0.1f, 0.5f)
+                                                weights.statsWeight = ((totalWidth - mouseX) / totalWidth).coerceIn(0.1f, 0.5f)
                                             }
                                         }
                                     }
                             ) {
                                 Row(modifier = Modifier.fillMaxSize()) {
                                     // 1. File Tree Panel
-                                    Box(modifier = Modifier.weight(treeWeight).fillMaxHeight().border(1.dp, Color.DarkGray)) {
-                                        key(uiState.rootNode()) {
-                                            FileTreeView(
-                                                rootNode = uiState.rootNode(),
-                                                selectedPath = selectedPath,
-                                                onSelect = onSelect,
-                                                onSecondaryClick = onSecondaryClick
-                                            )
-                                        }
+                                    Box(modifier = Modifier.weight(weights.treeWeight).fillMaxHeight().border(1.dp, Color.DarkGray)) {
+                                        FileTreeView(
+                                            stableRoot = stableRoot,
+                                            selectedPath = selectedPath,
+                                            onSelect = onSelect,
+                                            onSecondaryClick = onSecondaryClick
+                                        )
                                     }
 
                                     VerticalSplitter(
                                         onDragStart = { resizingSide = ResizingSide.TREE },
                                         onDragEnd = { 
                                             resizingSide = ResizingSide.NONE
-                                            onWeightsChangeState.value(treeWeight, statsWeight)
+                                            onWeightsChangeState.value(weights.treeWeight, weights.statsWeight)
                                         }
                                     )
 
                                     // 2. Treemap Panel (ISOLATED)
-                                    val treemapWeight = 1f - treeWeight - (if (showTypeStats) statsWeight else 0f)
+                                    val treemapWeight = 1f - weights.treeWeight - (if (showTypeStats) weights.statsWeight else 0f)
                                     Box(modifier = Modifier.weight(treemapWeight).fillMaxHeight()) {
-                                        key(uiState.rects(), highlightedExtension, selectedPath) {
-                                            TreemapWithTooltip(
-                                                rects = uiState.rects(),
-                                                index = uiState.index(),
-                                                selectedPath = selectedPath,
-                                                highlightedExtension = highlightedExtension,
-                                                isResizing = resizingSide != ResizingSide.NONE,
-                                                onSelect = onSelect,
-                                                onSecondaryClick = onSecondaryClick
-                                            )
-                                        }
+                                        TreemapWithTooltip(
+                                            stableData = stableRects,
+                                            index = uiState.index(),
+                                            selectedPath = selectedPath,
+                                            highlightedExtension = highlightedExtension,
+                                            isResizing = resizingSide != ResizingSide.NONE,
+                                            onSelect = onSelect,
+                                            onSecondaryClick = onSecondaryClick
+                                        )
                                     }
 
                                     if (showTypeStats) {
@@ -177,19 +175,17 @@ fun App(
                                             onDragStart = { resizingSide = ResizingSide.STATS },
                                             onDragEnd = { 
                                                 resizingSide = ResizingSide.NONE
-                                                onWeightsChangeState.value(treeWeight, statsWeight)
+                                                onWeightsChangeState.value(weights.treeWeight, weights.statsWeight)
                                             }
                                         )
 
                                         // 3. Statistics Panel
-                                        Box(modifier = Modifier.weight(statsWeight).fillMaxHeight().border(1.dp, Color.DarkGray)) {
-                                            key(uiState.typeStats()) {
-                                                FileTypePanel(
-                                                    stats = uiState.typeStats(),
-                                                    selectedExtension = highlightedExtension,
-                                                    onSelect = onStatsSelect
-                                                )
-                                            }
+                                        Box(modifier = Modifier.weight(weights.statsWeight).fillMaxHeight().border(1.dp, Color.DarkGray)) {
+                                            FileTypePanel(
+                                                stats = uiState.typeStats(),
+                                                selectedExtension = highlightedExtension,
+                                                onSelect = onStatsSelect
+                                            )
                                         }
                                     }
                                 }
