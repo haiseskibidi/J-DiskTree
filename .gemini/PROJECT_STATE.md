@@ -1,10 +1,9 @@
 # Project State: J-DiskTree
 
-## Phase 9: High-Performance Engine Redesign - [COMPLETED]
-- [x] **I/O Engine:** Replaced `ForkJoinPool` with native `Files.walkFileTree` for maximum speed and minimal object allocation.
-- [x] **Treemap Pruning:** Increased recursion threshold to 0.05% to avoid processing invisible nodes.
-- [x] **Thread Safety:** Enforced EDT for all Compose state updates and used functional updates in `ScanViewModel`.
-- [x] **Measurement:** Confirmed scan speeds of ~1.2s for 28k files, with UI remains responsive.
+## Phase 9: Extreme High-Performance Engine Redesign - [COMPLETED]
+- [x] **Parallel I/O Engine:** Replaced single-threaded `Files.walkFileTree` with a custom `ForkJoinPool` architecture implementing "Directory-Granular Parallelism". 
+- [x] **Memory & CPU Balance:** Tasks are spawned per-directory (for optimal work-stealing and NVMe saturation) but files within a directory are parsed sequentially via `DirectoryStream` to strictly bound object allocation overhead.
+- [x] **Thread-Safe Reporting:** Implemented a non-locking, time-throttled progress reporter using `AtomicLong` and `compareAndSet` to prevent UI thread flooding during massively parallel scans.
 
 ## Phase 10: Treemap Layout Refinement & Architecture Overhaul - [COMPLETED]
 - [x] **God File Elimination:** Completely refactored `Main.kt` (~300 lines) into modular Compose files (`App.kt`, `TreemapCanvas.kt`, `Toolbar.kt`, etc.).
