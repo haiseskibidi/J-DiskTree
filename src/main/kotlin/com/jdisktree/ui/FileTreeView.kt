@@ -39,7 +39,7 @@ fun FileTreeView(
 ) {
     if (rootNode == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No data to display", color = Color.Gray)
+            Text(stringResource("no_data"), color = Color.Gray)
         }
         return
     }

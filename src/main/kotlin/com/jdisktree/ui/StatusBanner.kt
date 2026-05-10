@@ -15,17 +15,25 @@ import com.jdisktree.state.UiState
 
 @Composable
 fun StatusBanner(state: UiState) {
+    val statusText = when (state.status()) {
+        ScanStatus.IDLE -> ""
+        ScanStatus.SCANNING -> stringResource("status_scanning")
+        ScanStatus.CALCULATING_TREEMAP -> stringResource("status_calculating")
+        ScanStatus.COMPLETED -> stringResource("status_completed")
+        ScanStatus.ERROR -> stringResource("status_error")
+    }
+
     Card(elevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(8.dp)) {
-            Text("Status: ${state.status()}", style = MaterialTheme.typography.subtitle1)
+            Text("Status: $statusText", style = MaterialTheme.typography.subtitle1)
             state.progress()?.let { p ->
-                Text("Files: ${p.filesScanned()} | Scanned: ${formatSize(p.bytesScanned())}")
+                Text("${stringResource("files_count", p.filesScanned())} | ${stringResource("scanned_size", formatSize(p.bytesScanned()))}")
                 if (state.status() == ScanStatus.SCANNING || state.status() == ScanStatus.CALCULATING_TREEMAP) {
-                    Text("Current: ${p.currentPath()}", style = MaterialTheme.typography.caption, maxLines = 1)
+                    Text(stringResource("current_path", p.currentPath()), style = MaterialTheme.typography.caption, maxLines = 1)
                 }
             }
             state.errorMessage()?.let { err ->
-                Text("Error: $err", color = Color.Red)
+                Text("${stringResource("status_error")}: $err", color = Color.Red)
             }
         }
     }

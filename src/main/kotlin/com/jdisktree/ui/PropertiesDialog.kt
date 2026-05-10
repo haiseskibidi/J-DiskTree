@@ -30,23 +30,23 @@ fun PropertiesDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Properties") },
+        title = { Text(stringResource("properties")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PropertyRow("Path:", path)
+                PropertyRow(stringResource("prop_path"), path)
                 if (attributes != null) {
-                    PropertyRow("Size:", formatSize(attributes.size()))
-                    PropertyRow("Created:", formatter.format(attributes.creationTime().toInstant()))
-                    PropertyRow("Modified:", formatter.format(attributes.lastModifiedTime().toInstant()))
-                    PropertyRow("Type:", if (attributes.isDirectory) "Directory" else "File")
+                    PropertyRow(stringResource("prop_size"), formatSize(attributes.size()))
+                    PropertyRow(stringResource("prop_created"), formatter.format(attributes.creationTime().toInstant()))
+                    PropertyRow(stringResource("prop_modified"), formatter.format(attributes.lastModifiedTime().toInstant()))
+                    PropertyRow(stringResource("prop_type"), if (attributes.isDirectory) stringResource("prop_dir") else stringResource("prop_file"))
                 } else {
-                    Text("Could not read file attributes.", color = MaterialTheme.colors.error)
+                    Text(stringResource("prop_error"), color = MaterialTheme.colors.error)
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text(stringResource("close_button"))
             }
         }
     )

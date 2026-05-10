@@ -20,24 +20,39 @@ fun FileContextMenu(
     DropdownMenu(
         expanded = true,
         onDismissRequest = onDismiss,
-        modifier = Modifier.width(200.dp)
+        modifier = Modifier.widthIn(min = 180.dp)
     ) {
-        DropdownMenuItem(onClick = { onOpenExplorer(); onDismiss() }) {
-            Text("Open in Explorer", style = MaterialTheme.typography.body2)
+        DropdownMenuItem(
+            onClick = { onOpenExplorer(); onDismiss() },
+            contentPadding = PaddingValues(horizontal = 12.dp)
+        ) {
+            Text(stringResource("open_explorer"), style = MaterialTheme.typography.body2)
         }
-        DropdownMenuItem(onClick = { onCopyPath(); onDismiss() }) {
-            Text("Copy Path", style = MaterialTheme.typography.body2)
+        DropdownMenuItem(
+            onClick = { onCopyPath(); onDismiss() },
+            contentPadding = PaddingValues(horizontal = 12.dp)
+        ) {
+            Text(stringResource("copy_path"), style = MaterialTheme.typography.body2)
         }
         Divider(color = Color.Gray.copy(alpha = 0.3f))
-        DropdownMenuItem(onClick = { onMoveToTrash(); onDismiss() }) {
-            Text("Move to Recycle Bin", style = MaterialTheme.typography.body2)
+        DropdownMenuItem(
+            onClick = { onMoveToTrash(); onDismiss() },
+            contentPadding = PaddingValues(horizontal = 12.dp)
+        ) {
+            Text(stringResource("move_to_trash"), style = MaterialTheme.typography.body2)
         }
-        DropdownMenuItem(onClick = { onDeletePermanently(); onDismiss() }) {
-            Text("Delete Permanently", color = Color(0xFFE57373), style = MaterialTheme.typography.body2)
+        DropdownMenuItem(
+            onClick = { onDeletePermanently(); onDismiss() },
+            contentPadding = PaddingValues(horizontal = 12.dp)
+        ) {
+            Text(stringResource("delete_permanently"), color = Color(0xFFE57373), style = MaterialTheme.typography.body2)
         }
         Divider(color = Color.Gray.copy(alpha = 0.3f))
-        DropdownMenuItem(onClick = { onShowProperties(); onDismiss() }) {
-            Text("Properties", style = MaterialTheme.typography.body2)
+        DropdownMenuItem(
+            onClick = { onShowProperties(); onDismiss() },
+            contentPadding = PaddingValues(horizontal = 12.dp)
+        ) {
+            Text(stringResource("properties"), style = MaterialTheme.typography.body2)
         }
     }
 }

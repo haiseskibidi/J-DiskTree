@@ -13,19 +13,19 @@ fun DeleteConfirmationDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete Permanently?") },
-        text = { Text("Are you sure you want to permanently delete \"$path\"? This action cannot be undone.") },
+        title = { Text(stringResource("delete_confirm_title")) },
+        text = { Text(stringResource("delete_confirm_text", path)) },
         confirmButton = {
             Button(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFD32F2F))
             ) {
-                Text("Delete", color = Color.White)
+                Text(stringResource("delete_button"), color = Color.White)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource("cancel_button"))
             }
         }
     )

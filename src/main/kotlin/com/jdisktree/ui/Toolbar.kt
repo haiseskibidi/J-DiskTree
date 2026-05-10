@@ -21,12 +21,16 @@ fun Toolbar(
     onPathChange: (String) -> Unit,
     viewModel: ScanViewModel
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Start,
+        modifier = Modifier.fillMaxWidth()
+    ) {
         TextField(
             value = pathText,
             onValueChange = onPathChange,
             modifier = Modifier.weight(1f),
-            label = { Text("Directory Path") },
+            label = { Text(stringResource("prop_path")) },
             singleLine = true
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -36,7 +40,7 @@ fun Toolbar(
             },
             enabled = uiState.status() != ScanStatus.SCANNING && uiState.status() != ScanStatus.CALCULATING_TREEMAP
         ) {
-            Text("Browse")
+            Text(stringResource("browse"))
         }
         Spacer(modifier = Modifier.width(8.dp))
         Button(
@@ -45,7 +49,7 @@ fun Toolbar(
             },
             enabled = uiState.status() != ScanStatus.SCANNING && uiState.status() != ScanStatus.CALCULATING_TREEMAP
         ) {
-            Text("Scan")
+            Text(stringResource("scan"))
         }
     }
 }
