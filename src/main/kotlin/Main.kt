@@ -20,14 +20,26 @@ fun main() {
         val localizationManager = remember { LocalizationManager(initialLang) }
         var isDarkTheme by remember { mutableStateOf(initialPrefs.isDarkTheme()) }
         var showTypeStats by remember { mutableStateOf(initialPrefs.showTypeStats()) }
+        var treeWeight by remember { mutableStateOf(initialPrefs.treeWidthWeight()) }
+        var statsWeight by remember { mutableStateOf(initialPrefs.statsWidthWeight()) }
 
-        // Effect to save whenever any preference changes
-        LaunchedEffect(isDarkTheme, localizationManager.currentLanguage, showTypeStats) {
-            prefsService.save(AppPreferences(
-                localizationManager.currentLanguage.code, 
-                isDarkTheme,
-                showTypeStats
-            ))
+        // Effect to save whenever any preference changes (debounced)
+        LaunchedEffect(isDarkTheme, localizationManager.currentLanguage, showTypeStats, treeWeight, statsWeight) {
+            if (isDarkTheme != initialPrefs.isDarkTheme() || 
+                localizationManager.currentLanguage.code != initialPrefs.languageCode() ||
+                showTypeStats != initialPrefs.showTypeStats() ||
+                treeWeight != initialPrefs.treeWidthWeight() ||
+                statsWeight != initialPrefs.statsWidthWeight()) {
+                
+                kotlinx.coroutines.delay(1000) // Debounce save to avoid disk churn during drag
+                prefsService.save(AppPreferences(
+                    localizationManager.currentLanguage.code, 
+                    isDarkTheme,
+                    showTypeStats,
+                    treeWeight,
+                    statsWeight
+                ))
+            }
         }
 
         Window(
@@ -39,9 +51,15 @@ fun main() {
                 App(
                     isDarkTheme = isDarkTheme,
                     showTypeStatsInitial = showTypeStats,
+                    treeWeightInitial = treeWeight,
+                    statsWeightInitial = statsWeight,
                     systemAccentColorHex = systemAccentColor,
                     onThemeToggle = { isDarkTheme = !isDarkTheme },
                     onStatsToggle = { showTypeStats = !showTypeStats },
+                    onWeightsChange = { t, s -> 
+                        treeWeight = t
+                        statsWeight = s
+                    },
                     onExit = { exitApplication() }
                 )
             }

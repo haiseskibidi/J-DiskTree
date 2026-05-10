@@ -76,8 +76,10 @@ public class PreferencesService {
             String lang = props.getProperty("language", "en");
             boolean isDark = Boolean.parseBoolean(props.getProperty("dark_theme", "true"));
             boolean showStats = Boolean.parseBoolean(props.getProperty("show_stats", "true"));
-            return new AppPreferences(lang, isDark, showStats);
-        } catch (IOException e) {
+            float treeWeight = Float.parseFloat(props.getProperty("tree_weight", "0.25"));
+            float statsWeight = Float.parseFloat(props.getProperty("stats_weight", "0.25"));
+            return new AppPreferences(lang, isDark, showStats, treeWeight, statsWeight);
+        } catch (IOException | NumberFormatException e) {
             e.printStackTrace();
             return AppPreferences.defaults();
         }
@@ -93,6 +95,8 @@ public class PreferencesService {
             props.setProperty("language", prefs.languageCode());
             props.setProperty("dark_theme", String.valueOf(prefs.isDarkTheme()));
             props.setProperty("show_stats", String.valueOf(prefs.showTypeStats()));
+            props.setProperty("tree_weight", String.valueOf(prefs.treeWidthWeight()));
+            props.setProperty("stats_weight", String.valueOf(prefs.statsWidthWeight()));
 
             try (OutputStream os = Files.newOutputStream(configPath)) {
                 props.store(os, "J-DiskTree User Preferences");
