@@ -24,43 +24,50 @@ public class TreemapService {
      * @param height Container height.
      * @return List of calculated rectangles.
      */
-    private static final double MIN_SIZE_FRACTION = 0.0001; // 0.01% threshold - show more details
-
     public List<TreeMapRect> calculateLayout(FileNode root, double x, double y, double width, double height) {
-        List<TreeMapRect> result = new ArrayList<>(2048); 
-        if (root.size() == 0) return result;
-
-        calculateRecursive(root, x, y, width, height, result, root.size());
+        List<TreeMapRect> result = new ArrayList<>();
+        if (root.size() > 0) {
+            calculateRecursive(root, x, y, width, height, result, root.size());
+        }
         return result;
     }
 
-    private void calculateRecursive(FileNode node, double x, double y, double w, double h, List<TreeMapRect> result, long totalRootSize) {
-        String extension = "";
-        if (!node.isDirectory()) {
-            int dotIndex = node.name().lastIndexOf('.');
-            if (dotIndex > 0 && dotIndex < node.name().length() - 1) {
-                extension = node.name().substring(dotIndex + 1).toLowerCase();
-            }
+    private String getExtension(String name) {
+        int dotIndex = name.lastIndexOf('.');
+        if (dotIndex > 0 && dotIndex < name.length() - 1) {
+            return name.substring(dotIndex + 1).toLowerCase();
         }
+        return "";
+    }
+
+    private void calculateRecursive(FileNode node, double x, double y, double w, double h, List<TreeMapRect> result, long totalRootSize) {
+        // Physical limit: Cannot draw or meaningfully subdivide sub-pixel bounds.
+        if (w < 1.0 || h < 1.0) {
+            return;
+        }
+
+        String extension = node.isDirectory() ? "" : getExtension(node.name());
         result.add(new TreeMapRect(node.absolutePath(), x, y, w, h, node.isDirectory(), extension, node.size()));
 
         if (!node.isDirectory() || node.children().isEmpty()) {
             return;
         }
 
-        // Recursive Precision: Stop only if the block is too small to be meaningful on screen
-        if ((double) node.size() / totalRootSize < MIN_SIZE_FRACTION || w < 4 || h < 4) {
-            return;
-        }
+        // Sub-Pixel Pre-Filtering: Calculate the canvas area that 1 byte represents
+        double areaPerByte = (w * h) / (double) node.size();
 
-        List<FileNode> children = node.children().stream()
-                .filter(c -> c.size() > 0)
+        List<FileNode> allChildren = node.children().stream()
+                // Filter out zero-size files and files whose physical area would be < 1 square pixel
+                .filter(c -> c.size() > 0 && (c.size() * areaPerByte) >= 1.0)
                 .sorted(Comparator.comparingLong(FileNode::size).reversed())
                 .collect(Collectors.toList());
 
-        if (children.isEmpty()) return;
+        if (allChildren.isEmpty()) {
+            return;
+        }
 
-        squarifyIterative(children, new Rect(x, y, w, h), node.size(), result, totalRootSize);
+        long effectiveTotalSize = allChildren.stream().mapToLong(FileNode::size).sum();
+        squarifyIterative(allChildren, new Rect(x, y, w, h), effectiveTotalSize, result, totalRootSize);
     }
 
     private void squarifyIterative(List<FileNode> children, Rect initialBounds, long totalSize, List<TreeMapRect> result, long totalRootSize) {

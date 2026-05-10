@@ -162,7 +162,7 @@ fun TreemapCanvas(
                     val baseColor = getColorForExtension(rect.extension())
                     
                     // Adaptive visual style based on size
-                    val isTiny = finalW < 3f || finalH < 3f
+                    val isTiny = finalW < 5f || finalH < 5f
                     
                     if (isTiny) {
                         // Draw only solid color for tiny items to avoid border-clutter
