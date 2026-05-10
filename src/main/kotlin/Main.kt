@@ -18,10 +18,15 @@ fun main() {
         val initialLang = Language.entries.find { it.code == initialPrefs.languageCode() } ?: Language.EN
         val localizationManager = remember { LocalizationManager(initialLang) }
         var isDarkTheme by remember { mutableStateOf(initialPrefs.isDarkTheme()) }
+        var showTypeStats by remember { mutableStateOf(initialPrefs.showTypeStats()) }
 
-        // Effect to save whenever theme or language changes
-        LaunchedEffect(isDarkTheme, localizationManager.currentLanguage) {
-            prefsService.save(AppPreferences(localizationManager.currentLanguage.code, isDarkTheme))
+        // Effect to save whenever any preference changes
+        LaunchedEffect(isDarkTheme, localizationManager.currentLanguage, showTypeStats) {
+            prefsService.save(AppPreferences(
+                localizationManager.currentLanguage.code, 
+                isDarkTheme,
+                showTypeStats
+            ))
         }
 
         Window(
@@ -32,7 +37,9 @@ fun main() {
             CompositionLocalProvider(LocalStrings provides localizationManager) {
                 App(
                     isDarkTheme = isDarkTheme,
+                    showTypeStatsInitial = showTypeStats,
                     onThemeToggle = { isDarkTheme = !isDarkTheme },
+                    onStatsToggle = { showTypeStats = !showTypeStats },
                     onExit = { exitApplication() }
                 )
             }

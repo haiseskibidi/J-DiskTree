@@ -1,6 +1,7 @@
 package com.jdisktree.viewmodel;
 
 import com.jdisktree.domain.FileNode;
+import com.jdisktree.domain.FileTypeStat;
 import com.jdisktree.domain.TreeMapRect;
 import com.jdisktree.scanner.DiskScannerService;
 import com.jdisktree.scanner.FileOperationsService;
@@ -10,7 +11,10 @@ import com.jdisktree.treemap.index.SpatialGridIndex;
 
 import javax.swing.SwingUtilities;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -73,8 +77,10 @@ public class ScanViewModel {
             index.add(rect);
         }
 
+        List<FileTypeStat> stats = calculateTypeStats(newRoot);
+
         // IMPORTANT: We must update the state with the NEW root node so the Tree View reflects changes
-        updateState(s -> s.withRects(rects, index, newRoot));
+        updateState(s -> s.withRects(rects, index, newRoot, stats));
     }
 
     public void startScan(Path path, double width, double height) {
@@ -102,6 +108,9 @@ public class ScanViewModel {
                 long treemapEnd = System.currentTimeMillis();
                 System.out.println("Treemap calculation completed in: " + (treemapEnd - treemapStart) + " ms. Rects: " + rects.size());
                 
+                // Calculate extension stats
+                List<FileTypeStat> stats = calculateTypeStats(root);
+
                 // Build Spatial Index
                 SpatialGridIndex index = new SpatialGridIndex(100, 100, width, height);
                 for (TreeMapRect rect : rects) {
@@ -109,7 +118,7 @@ public class ScanViewModel {
                 }
 
                 long updateStart = System.currentTimeMillis();
-                updateState(s -> s.withRects(rects, index, root));
+                updateState(s -> s.withRects(rects, index, root, stats));
                 long updateEnd = System.currentTimeMillis();
                 System.out.println("State update (EDT handoff) took: " + (updateEnd - updateStart) + " ms");
 
@@ -118,6 +127,45 @@ public class ScanViewModel {
                 e.printStackTrace();
             }
         });
+    }
+
+    private List<FileTypeStat> calculateTypeStats(FileNode root) {
+        Map<String, TypeAccumulator> aggregationMap = new HashMap<>();
+        collectExtensions(root, aggregationMap);
+
+        long totalBytes = root.size();
+        List<FileTypeStat> results = new ArrayList<>();
+        
+        aggregationMap.forEach((ext, acc) -> {
+            double percentage = totalBytes > 0 ? (double) acc.size / totalBytes : 0;
+            results.add(new FileTypeStat(ext, acc.size, acc.count, percentage));
+        });
+
+        results.sort((a, b) -> Long.compare(b.totalSize(), a.totalSize()));
+        return results;
+    }
+
+    private void collectExtensions(FileNode node, Map<String, TypeAccumulator> map) {
+        if (!node.isDirectory()) {
+            String name = node.name();
+            int dotIndex = name.lastIndexOf('.');
+            String ext = (dotIndex > 0 && dotIndex < name.length() - 1) 
+                    ? name.substring(dotIndex + 1).toLowerCase() 
+                    : "no extension";
+            
+            TypeAccumulator acc = map.computeIfAbsent(ext, k -> new TypeAccumulator());
+            acc.size += node.size();
+            acc.count++;
+        } else {
+            for (FileNode child : node.children()) {
+                collectExtensions(child, map);
+            }
+        }
+    }
+
+    private static class TypeAccumulator {
+        long size = 0;
+        int count = 0;
     }
 
     private synchronized void updateState(UnaryOperator<UiState> updateFn) {

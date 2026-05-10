@@ -21,6 +21,7 @@ fun TreemapCanvas(
     rects: List<TreeMapRect>,
     index: SpatialGridIndex?,
     selectedPath: String?,
+    highlightedExtension: String?,
     baseWidth: Double,
     baseHeight: Double,
     onHover: (TreeMapRect?, Offset) -> Unit,
@@ -30,7 +31,7 @@ fun TreemapCanvas(
     var canvasSize by remember { mutableStateOf(Size.Zero) }
     var currentHovered by remember { mutableStateOf<TreeMapRect?>(null) }
 
-    val treemapBitmap = remember(rects, canvasSize, baseWidth, baseHeight) {
+    val treemapBitmap = remember(rects, canvasSize, baseWidth, baseHeight, highlightedExtension) {
         if (canvasSize.width <= 0 || canvasSize.height <= 0 || rects.isEmpty()) null
         else {
             val bitmap = ImageBitmap(canvasSize.width.toInt(), canvasSize.height.toInt())
@@ -59,7 +60,13 @@ fun TreemapCanvas(
                     val drawW = rect.width().toFloat() * scaleX
                     val drawH = rect.height().toFloat() * scaleY
 
-                    val baseColor = getColorForExtension(rect.extension())
+                    var baseColor = getColorForExtension(rect.extension())
+                    
+                    // Dim files that don't match the highlighted extension
+                    if (highlightedExtension != null && rect.extension() != highlightedExtension) {
+                        baseColor = baseColor.copy(alpha = 0.2f)
+                    }
+
                     val isTiny = drawW < 5f || drawH < 5f
                     
                     if (isTiny) {
@@ -71,28 +78,38 @@ fun TreemapCanvas(
                                 from = Offset(drawX, drawY),
                                 to = Offset(drawX, drawY + drawH),
                                 colors = listOf(
-                                    baseColor.copy(alpha = 1f),
+                                    baseColor,
                                     baseColor.copy(red = baseColor.red * 0.85f, green = baseColor.green * 0.85f, blue = baseColor.blue * 0.85f)
                                 )
                             )
                         }
                         canvas.drawRect(androidx.compose.ui.geometry.Rect(drawX, drawY, drawX + drawW, drawY + drawH), paint)
                         
-                        val lightPaint = Paint().apply {
-                            color = Color.White.copy(alpha = 0.2f)
-                            strokeWidth = 1f
-                            style = PaintingStyle.Stroke
-                        }
-                        canvas.drawLine(Offset(drawX, drawY), Offset(drawX + drawW, drawY), lightPaint)
-                        canvas.drawLine(Offset(drawX, drawY), Offset(drawX, drawY + drawH), lightPaint)
+                        // Highlight matched extensions with a bright border
+                        if (highlightedExtension != null && rect.extension() == highlightedExtension) {
+                            val highlightPaint = Paint().apply {
+                                color = Color.White
+                                strokeWidth = 2f
+                                style = PaintingStyle.Stroke
+                            }
+                            canvas.drawRect(androidx.compose.ui.geometry.Rect(drawX, drawY, drawX + drawW, drawY + drawH), highlightPaint)
+                        } else {
+                            val lightPaint = Paint().apply {
+                                color = Color.White.copy(alpha = if (highlightedExtension == null) 0.2f else 0.05f)
+                                strokeWidth = 1f
+                                style = PaintingStyle.Stroke
+                            }
+                            canvas.drawLine(Offset(drawX, drawY), Offset(drawX + drawW, drawY), lightPaint)
+                            canvas.drawLine(Offset(drawX, drawY), Offset(drawX, drawY + drawH), lightPaint)
 
-                        val darkPaint = Paint().apply {
-                            color = Color.Black.copy(alpha = 0.3f)
-                            strokeWidth = 1f
-                            style = PaintingStyle.Stroke
+                            val darkPaint = Paint().apply {
+                                color = Color.Black.copy(alpha = if (highlightedExtension == null) 0.3f else 0.1f)
+                                strokeWidth = 1f
+                                style = PaintingStyle.Stroke
+                            }
+                            canvas.drawLine(Offset(drawX, drawY + drawH), Offset(drawX + drawW, drawY + drawH), darkPaint)
+                            canvas.drawLine(Offset(drawX + drawW, drawY), Offset(drawX + drawW, drawY + drawH), darkPaint)
                         }
-                        canvas.drawLine(Offset(drawX, drawY + drawH), Offset(drawX + drawW, drawY + drawH), darkPaint)
-                        canvas.drawLine(Offset(drawX + drawW, drawY), Offset(drawX + drawW, drawY + drawH), darkPaint)
                     }
                 }
             }

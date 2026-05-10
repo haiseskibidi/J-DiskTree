@@ -18,7 +18,9 @@ import com.jdisktree.viewmodel.ScanViewModel
 @Composable
 fun App(
     isDarkTheme: Boolean = true,
+    showTypeStatsInitial: Boolean = true,
     onThemeToggle: () -> Unit = {},
+    onStatsToggle: () -> Unit = {},
     onExit: () -> Unit = {}
 ) {
     var uiState by remember { mutableStateOf(UiState.idle()) }
@@ -31,6 +33,10 @@ fun App(
     var contextMenuOffset by remember { mutableStateOf(Offset.Zero) }
     var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
     var showProperties by remember { mutableStateOf<String?>(null) }
+    var highlightedExtension by remember { mutableStateOf<String?>(null) }
+    
+    // Controlled from Main.kt to persist state
+    val showTypeStats = showTypeStatsInitial
 
     val themeColors = if (isDarkTheme) darkColors() else lightColors()
 
@@ -43,7 +49,9 @@ fun App(
                 // Modern Custom Menu Bar
                 MainMenu(
                     isDarkTheme = isDarkTheme,
+                    showStats = showTypeStats,
                     onThemeToggle = onThemeToggle,
+                    onStatsToggle = onStatsToggle,
                     onNewScan = { 
                         DirectoryPicker.pickDirectory()?.let { pathText = it }
                     },
@@ -66,7 +74,7 @@ fun App(
                         if (uiState.rects().isNotEmpty()) {
                             Row(modifier = Modifier.fillMaxSize()) {
                                 // Left Panel: Synchronized File Tree View
-                                Box(modifier = Modifier.weight(0.3f).fillMaxHeight().border(1.dp, Color.DarkGray)) {
+                                Box(modifier = Modifier.weight(0.25f).fillMaxHeight().border(1.dp, Color.DarkGray)) {
                                     FileTreeView(
                                         rootNode = uiState.rootNode(),
                                         selectedPath = selectedPath,
@@ -78,12 +86,14 @@ fun App(
                                     )
                                 }
 
-                                // Right Panel: Treemap Canvas
-                                Box(modifier = Modifier.weight(0.7f).fillMaxHeight()) {
+                                // Middle Panel: Treemap Canvas
+                                val treemapWeight = if (showTypeStats) 0.5f else 0.75f
+                                Box(modifier = Modifier.weight(treemapWeight).fillMaxHeight()) {
                                     TreemapCanvas(
                                         rects = uiState.rects(),
                                         index = uiState.index(),
                                         selectedPath = selectedPath,
+                                        highlightedExtension = highlightedExtension,
                                         baseWidth = 1000.0,
                                         baseHeight = 1000.0,
                                         onHover = { rect, pos -> 
@@ -101,6 +111,17 @@ fun App(
                                     
                                     hoveredRect?.let { rect ->
                                         Tooltip(rect, mousePosition)
+                                    }
+                                }
+
+                                // Right Panel: Extension Statistics
+                                if (showTypeStats) {
+                                    Box(modifier = Modifier.weight(0.25f).fillMaxHeight().border(1.dp, Color.DarkGray)) {
+                                        FileTypePanel(
+                                            stats = uiState.typeStats(),
+                                            selectedExtension = highlightedExtension,
+                                            onSelect = { highlightedExtension = it }
+                                        )
                                     }
                                 }
                             }

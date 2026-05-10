@@ -18,7 +18,9 @@ import java.net.URI
 @Composable
 fun MainMenu(
     isDarkTheme: Boolean,
+    showStats: Boolean,
     onThemeToggle: () -> Unit,
+    onStatsToggle: () -> Unit,
     onNewScan: () -> Unit,
     onExit: () -> Unit
 ) {
@@ -33,15 +35,13 @@ fun MainMenu(
         verticalAlignment = Alignment.CenterVertically
     ) {
         MenuButton(strings.get("file_menu")) { expanded ->
-            DropdownMenuItem(
-                onClick = { onNewScan(); expanded.value = false },
+            DropdownMenuItem(onClick = { onNewScan(); expanded.value = false },
                 contentPadding = PaddingValues(horizontal = 12.dp)
             ) {
                 Text(strings.get("new_scan"), style = MaterialTheme.typography.body2)
             }
             Divider(color = Color.Gray.copy(alpha = 0.2f))
-            DropdownMenuItem(
-                onClick = { onExit(); expanded.value = false },
+            DropdownMenuItem(onClick = { onExit(); expanded.value = false },
                 contentPadding = PaddingValues(horizontal = 12.dp)
             ) {
                 Text(strings.get("exit"), style = MaterialTheme.typography.body2)
@@ -51,8 +51,7 @@ fun MainMenu(
         MenuButton(strings.get("view_menu")) { expanded ->
             var languageSubMenu by remember { mutableStateOf(false) }
 
-            DropdownMenuItem(
-                onClick = { languageSubMenu = !languageSubMenu },
+            DropdownMenuItem(onClick = { languageSubMenu = !languageSubMenu },
                 contentPadding = PaddingValues(horizontal = 12.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -64,9 +63,9 @@ fun MainMenu(
             if (languageSubMenu) {
                 Language.entries.forEach { lang ->
                     DropdownMenuItem(
-                        onClick = {
+                        onClick = { 
                             strings.setLanguage(lang)
-                            expanded.value = false
+                            expanded.value = false 
                         },
                         contentPadding = PaddingValues(start = 24.dp, end = 12.dp)
                     ) {
@@ -77,14 +76,24 @@ fun MainMenu(
 
             Divider(color = Color.Gray.copy(alpha = 0.2f))
 
-            DropdownMenuItem(
-                onClick = { onThemeToggle(); expanded.value = false },
+            DropdownMenuItem(onClick = { onThemeToggle(); expanded.value = false },
                 contentPadding = PaddingValues(horizontal = 12.dp)
             ) {
                 Text(
                     if (isDarkTheme) strings.get("light_theme") else strings.get("dark_theme"),
                     style = MaterialTheme.typography.body2
                 )
+            }
+
+            DropdownMenuItem(onClick = { onStatsToggle(); expanded.value = false },
+                contentPadding = PaddingValues(horizontal = 12.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(strings.get("show_stats"), style = MaterialTheme.typography.body2)
+                    if (showStats) {
+                        Text("✓", color = MaterialTheme.colors.primary, style = MaterialTheme.typography.body2)
+                    }
+                }
             }
         }
 

@@ -36,7 +36,8 @@ public class PreferencesService {
             props.load(is);
             String lang = props.getProperty("language", "en");
             boolean isDark = Boolean.parseBoolean(props.getProperty("dark_theme", "true"));
-            return new AppPreferences(lang, isDark);
+            boolean showStats = Boolean.parseBoolean(props.getProperty("show_stats", "true"));
+            return new AppPreferences(lang, isDark, showStats);
         } catch (IOException e) {
             e.printStackTrace();
             return AppPreferences.defaults();
@@ -52,6 +53,7 @@ public class PreferencesService {
             Properties props = new Properties();
             props.setProperty("language", prefs.languageCode());
             props.setProperty("dark_theme", String.valueOf(prefs.isDarkTheme()));
+            props.setProperty("show_stats", String.valueOf(prefs.showTypeStats()));
 
             try (OutputStream os = Files.newOutputStream(configPath)) {
                 props.store(os, "J-DiskTree User Preferences");
