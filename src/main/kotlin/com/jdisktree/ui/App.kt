@@ -33,7 +33,7 @@ fun App(
 ) {
     var uiState by remember { mutableStateOf(UiState.idle()) }
     val viewModel = remember { ScanViewModel { newState -> uiState = newState } }
-    var pathText by remember { mutableStateOf("C:\\") }
+    var pathText by remember { mutableStateOf(System.getProperty("user.home")) }
     var selectedPath by remember { mutableStateOf<String?>(null) }
     var contextMenuPath by remember { mutableStateOf<String?>(null) }
     var contextMenuOffset by remember { mutableStateOf(Offset.Zero) }
@@ -60,8 +60,8 @@ fun App(
 
     // Theme logic
     val systemAccentColor = remember(systemAccentColorHex) {
-        systemAccentColorHex?.let {
-            try { Color(it.toLong(16)) } catch (e: Exception) { null }
+        systemAccentColorHex?.let { hex ->
+            try { Color(hex.toLong(16)) } catch (e: Exception) { null }
         }
     }
     val onAccentColor = systemAccentColor?.let { getContrastColor(it) } ?: Color.White
@@ -96,28 +96,28 @@ fun App(
                         onStatsToggle()
                     },
                     onNewScan = { 
-                        DirectoryPicker.pickDirectory()?.let { pathText = it }
+                        DirectoryPicker.pickDirectory()?.let { pickedPath -> pathText = pickedPath }
                     },
                     onExit = onExit
                 )
 
-                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Column(modifier = Modifier.fillMaxSize().padding(Dimens.ToolbarPadding)) {
                     Toolbar(
                         uiState = uiState,
                         pathText = pathText,
-                        onPathChange = { pathText = it },
+                        onPathChange = { newPath -> pathText = newPath },
                         viewModel = viewModel
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Dimens.SpacingLarge))
                     StatusBanner(uiState)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Dimens.SpacingLarge))
 
                     BoxWithConstraints(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .border(1.dp, Color.Gray)
+                            .border(Dimens.BorderThin, Color.Gray)
                     ) {
                         val totalWidth = constraints.maxWidth.toFloat()
                         
@@ -139,7 +139,7 @@ fun App(
                             ) {
                                 Row(modifier = Modifier.fillMaxSize()) {
                                     // 1. File Tree Panel
-                                    Box(modifier = Modifier.weight(weights.treeWeight).fillMaxHeight().border(1.dp, Color.DarkGray)) {
+                                    Box(modifier = Modifier.weight(weights.treeWeight).fillMaxHeight().border(Dimens.BorderThin, Color.DarkGray)) {
                                         FileTreeView(
                                             stableRoot = stableRoot,
                                             selectedPath = selectedPath,
@@ -180,7 +180,7 @@ fun App(
                                         )
 
                                         // 3. Statistics Panel
-                                        Box(modifier = Modifier.weight(weights.statsWeight).fillMaxHeight().border(1.dp, Color.DarkGray)) {
+                                        Box(modifier = Modifier.weight(weights.statsWeight).fillMaxHeight().border(Dimens.BorderThin, Color.DarkGray)) {
                                             FileTypePanel(
                                                 stats = uiState.typeStats(),
                                                 selectedExtension = highlightedExtension,

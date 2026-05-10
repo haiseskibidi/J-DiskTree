@@ -4,15 +4,15 @@ import androidx.compose.ui.graphics.Color
 
 fun getColorForExtension(ext: String): Color {
     return when (ext.lowercase()) {
-        "dir_block" -> Color(0xFF455A64) // Dark Grey/Blue for compressed folders
-        "exe", "dll", "sys", "msi", "com" -> Color(0xFFEF5350)
-        "jpg", "jpeg", "png", "gif", "bmp", "svg", "webp" -> Color(0xFF66BB6A)
-        "mp4", "mkv", "avi", "mov", "flv", "webm" -> Color(0xFF42A5F5)
-        "mp3", "wav", "flac", "ogg", "m4a" -> Color(0xFFAB47BC)
-        "pdf", "doc", "docx", "txt", "rtf", "md", "odt", "xls", "xlsx" -> Color(0xFFFFA726)
-        "zip", "rar", "7z", "tar", "gz", "bz2" -> Color(0xFF8D6E63)
-        "java", "kt", "py", "cpp", "c", "js", "html", "css", "ts", "json", "xml" -> Color(0xFF26A69A)
-        else -> Color(0xFF78909C)
+        "dir_block" -> AppColors.DirBlock
+        "exe", "dll", "sys", "msi", "com" -> AppColors.Executable
+        "jpg", "jpeg", "png", "gif", "bmp", "svg", "webp" -> AppColors.Image
+        "mp4", "mkv", "avi", "mov", "flv", "webm" -> AppColors.Video
+        "mp3", "wav", "flac", "ogg", "m4a" -> AppColors.Audio
+        "pdf", "doc", "docx", "txt", "rtf", "md", "odt", "xls", "xlsx" -> AppColors.Document
+        "zip", "rar", "7z", "tar", "gz", "bz2" -> AppColors.Archive
+        "java", "kt", "py", "cpp", "c", "js", "html", "css", "ts", "json", "xml" -> AppColors.Code
+        else -> AppColors.Unknown
     }
 }
 

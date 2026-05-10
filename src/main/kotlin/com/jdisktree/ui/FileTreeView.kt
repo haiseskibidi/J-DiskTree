@@ -70,7 +70,7 @@ fun FileTreeView(
 
             if (isExpanded && node.isDirectory) {
                 // Sort children by size descending for a better UX
-                node.children().sortedByDescending { it.size() }.forEach { child ->
+                node.children().sortedByDescending { child -> child.size() }.forEach { child ->
                     traverse(child, level + 1)
                 }
             }
@@ -84,7 +84,7 @@ fun FileTreeView(
     // Smart Scroll: Intelligently decide where to scroll based on nesting depth
     LaunchedEffect(selectedPath, flatNodes) {
         if (selectedPath != null) {
-            val fileIndex = flatNodes.indexOfFirst { it.fileNode.absolutePath() == selectedPath }
+            val fileIndex = flatNodes.indexOfFirst { node -> node.fileNode.absolutePath() == selectedPath }
             if (fileIndex >= 0) {
                 val rootNioPath = Paths.get(rootNode.absolutePath())
                 var currentPath = Paths.get(selectedPath)
@@ -100,7 +100,7 @@ fun FileTreeView(
                     currentPath = parent
                 }
 
-                val rootPlusOneIndex = flatNodes.indexOfFirst { it.fileNode.absolutePath() == rootPlusOnePath }
+                val rootPlusOneIndex = flatNodes.indexOfFirst { node -> node.fileNode.absolutePath() == rootPlusOnePath }
                 
                 // DECISION LOGIC:
                 // If the distance between the top-level folder and the selected file is small (< 20 rows),
@@ -124,7 +124,7 @@ fun FileTreeView(
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(end = 12.dp)) {
-            items(flatNodes, key = { it.fileNode.absolutePath() }) { flatNode ->
+            items(flatNodes, key = { node -> node.fileNode.absolutePath() }) { flatNode ->
                 val node = flatNode.fileNode
                 val isSelected = node.absolutePath() == selectedPath
 
@@ -132,8 +132,8 @@ fun FileTreeView(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 1.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(if (isSelected) Color(0xFF388E3C).copy(alpha = 0.4f) else Color.Transparent)
+                        .clip(RoundedCornerShape(Dimens.RadiusMedium))
+                        .background(if (isSelected) AppColors.SelectionGreen.copy(alpha = 0.4f) else Color.Transparent)
                         .onPointerEvent(PointerEventType.Press) { event ->
                             val change = event.changes.first()
                             if (change.pressed) {
@@ -165,7 +165,7 @@ fun FileTreeView(
                         Spacer(modifier = Modifier.width(16.dp))
                     }
 
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(Dimens.SpacingSmall))
 
                     // Color block representing file type
                     val ext = if (node.isDirectory) "dir_block" else {
@@ -174,9 +174,9 @@ fun FileTreeView(
                     }
                     val color = getColorForExtension(ext)
 
-                    Box(modifier = Modifier.size(12.dp).background(color, RoundedCornerShape(2.dp)))
+                    Box(modifier = Modifier.size(Dimens.IconSmall).background(color, RoundedCornerShape(Dimens.RadiusSmall)))
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Dimens.SpacingMedium))
 
                     Text(
                         text = node.name(),

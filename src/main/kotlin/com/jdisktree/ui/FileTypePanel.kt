@@ -24,27 +24,27 @@ fun FileTypePanel(
     selectedExtension: String?,
     onSelect: (String?) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(Dimens.SpacingMedium)) {
         Text(
-            text = "Statistics by Type",
+            text = stringResource("file_types"),
             style = MaterialTheme.typography.h6,
             color = Color.White,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = Dimens.SpacingMedium)
         )
 
-        LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            items(stats) { stat ->
+        LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall)) {
+            items(stats, key = { stat -> stat.extension }) { stat ->
                 val isSelected = stat.extension == selectedExtension
                 
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(RoundedCornerShape(Dimens.RadiusMedium))
                         .background(if (isSelected) Color.White.copy(alpha = 0.1f) else Color.Transparent)
                         .clickable { 
                             onSelect(if (isSelected) null else stat.extension)
                         }
-                        .padding(8.dp)
+                        .padding(Dimens.SpacingMedium)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -54,10 +54,10 @@ fun FileTypePanel(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(10.dp)
-                                    .background(getColorForExtension(stat.extension), RoundedCornerShape(2.dp))
+                                    .size(Dimens.IconSmall)
+                                    .background(getColorForExtension(stat.extension), RoundedCornerShape(Dimens.RadiusSmall))
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(Dimens.SpacingMedium))
                             Text(
                                 text = ".${stat.extension}",
                                 style = MaterialTheme.typography.body2,
@@ -72,23 +72,23 @@ fun FileTypePanel(
                         )
                     }
                     
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Dimens.SpacingSmall))
                     
                     LinearProgressIndicator(
                         progress = stat.percentage.toFloat(),
-                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                        modifier = Modifier.fillMaxWidth().height(Dimens.SpacingSmall).clip(RoundedCornerShape(Dimens.RadiusSmall)),
                         color = getColorForExtension(stat.extension),
                         backgroundColor = Color.DarkGray
                     )
                     
                     Row(modifier = Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(
-                            text = "${(stat.percentage * 100).toInt()}%",
+                            text = String.format("%.1f%%", stat.percentage * 100),
                             style = MaterialTheme.typography.overline,
                             color = Color.Gray
                         )
                         Text(
-                            text = "${stat.count} files",
+                            text = "${stat.count} ${stringResource("files")}",
                             style = MaterialTheme.typography.overline,
                             color = Color.Gray
                         )
