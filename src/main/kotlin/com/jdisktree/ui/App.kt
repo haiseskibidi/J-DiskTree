@@ -19,28 +19,49 @@ import com.jdisktree.viewmodel.ScanViewModel
 fun App(
     isDarkTheme: Boolean = true,
     showTypeStatsInitial: Boolean = true,
+    systemAccentColorHex: String? = null,
     onThemeToggle: () -> Unit = {},
     onStatsToggle: () -> Unit = {},
     onExit: () -> Unit = {}
 ) {
-    var uiState by remember { mutableStateOf(UiState.idle()) }
-    val viewModel = remember { ScanViewModel { newState -> uiState = newState } }
-    var pathText by remember { mutableStateOf("C:\\") }
-    var hoveredRect by remember { mutableStateOf<TreeMapRect?>(null) }
-    var mousePosition by remember { mutableStateOf(Offset.Zero) }
-    var selectedPath by remember { mutableStateOf<String?>(null) }
-    var contextMenuPath by remember { mutableStateOf<String?>(null) }
-    var contextMenuOffset by remember { mutableStateOf(Offset.Zero) }
-    var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
-    var showProperties by remember { mutableStateOf<String?>(null) }
-    var highlightedExtension by remember { mutableStateOf<String?>(null) }
-    
-    // Controlled from Main.kt to persist state
-    val showTypeStats = showTypeStatsInitial
+        var uiState by remember { mutableStateOf(UiState.idle()) }
+        val viewModel = remember { ScanViewModel { newState -> uiState = newState } }
+        var pathText by remember { mutableStateOf("C:\\") }
+        var hoveredRect by remember { mutableStateOf<TreeMapRect?>(null) }
+        var mousePosition by remember { mutableStateOf(Offset.Zero) }
+        var selectedPath by remember { mutableStateOf<String?>(null) }
+        var contextMenuPath by remember { mutableStateOf<String?>(null) }
+        var contextMenuOffset by remember { mutableStateOf(Offset.Zero) }
+        var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
+        var showProperties by remember { mutableStateOf<String?>(null) }
+        var highlightedExtension by remember { mutableStateOf<String?>(null) }
+        var showTypeStats by remember { mutableStateOf(showTypeStatsInitial) }
 
-    val themeColors = if (isDarkTheme) darkColors() else lightColors()
+        val systemAccentColor = remember(systemAccentColorHex) {
+            systemAccentColorHex?.let {
+                try { Color(it.toLong(16)) } catch (e: Exception) { null }
+            }
+        }
 
-    MaterialTheme(colors = themeColors) {
+        val onAccentColor = systemAccentColor?.let { getContrastColor(it) } ?: Color.White
+
+        val themeColors = if (isDarkTheme) {
+            darkColors(
+                primary = systemAccentColor ?: darkColors().primary,
+                onPrimary = if (systemAccentColor != null) onAccentColor else darkColors().onPrimary,
+                secondary = systemAccentColor ?: darkColors().secondary,
+                onSecondary = if (systemAccentColor != null) onAccentColor else darkColors().onSecondary
+            )
+        } else {
+            lightColors(
+                primary = systemAccentColor ?: lightColors().primary,
+                onPrimary = if (systemAccentColor != null) onAccentColor else lightColors().onPrimary,
+                secondary = systemAccentColor ?: lightColors().secondary,
+                onSecondary = if (systemAccentColor != null) onAccentColor else lightColors().onSecondary
+            )
+        }
+
+        MaterialTheme(colors = themeColors) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colors.background) {
             Column(
                 modifier = Modifier.fillMaxSize(),

@@ -3,6 +3,8 @@ package com.jdisktree.state;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,6 +23,43 @@ public class PreferencesService {
     public PreferencesService() {
         String userHome = System.getProperty("user.home");
         this.configPath = Paths.get(userHome, DIR_NAME, FILE_NAME);
+    }
+
+    /**
+     * Reads Windows registry to get the system accent color.
+     * Returns standard AARRGGBB hex string (e.g., "FFD32F2F") or null if failed.
+     */
+    public String getWindowsAccentColor() {
+        String os = System.getProperty("os.name").toLowerCase();
+        if (!os.contains("win")) return null;
+
+        try {
+            Process process = Runtime.getRuntime().exec("reg query \"HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\DWM\" /v AccentColor");
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.contains("AccentColor")) {
+                        String[] parts = line.split("\\s+");
+                        String hex = parts[parts.length - 1]; // e.g. 0xffd32f2f (AABBGGRR)
+                        if (hex.startsWith("0x")) {
+                            long colorLong = Long.decode(hex);
+                            // Windows stores as ABGR. We need ARGB.
+                            // Extract bytes
+                            int r = (int) (colorLong & 0xFF);
+                            int g = (int) ((colorLong >> 8) & 0xFF);
+                            int b = (int) ((colorLong >> 16) & 0xFF);
+                            int a = (int) ((colorLong >> 24) & 0xFF);
+                            if (a == 0) a = 0xFF; // Ensure opaque if alpha is 0
+
+                            return String.format("%02X%02X%02X%02X", a, r, g, b);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /**

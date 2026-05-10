@@ -15,3 +15,11 @@ fun getColorForExtension(ext: String): Color {
         else -> Color(0xFF78909C)
     }
 }
+
+/**
+ * Returns Color.Black or Color.White depending on the background's luminance.
+ */
+fun getContrastColor(background: Color): Color {
+    val luminance = 0.2126 * background.red + 0.7152 * background.green + 0.0722 * background.blue
+    return if (luminance > 0.5) Color.Black else Color.White
+}

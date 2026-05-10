@@ -10,6 +10,7 @@ fun main() {
     
     val prefsService = PreferencesService()
     val initialPrefs = prefsService.load()
+    val systemAccentColor = prefsService.windowsAccentColor
 
     application {
         val windowState = rememberWindowState(width = 1200.dp, height = 900.dp)
@@ -38,6 +39,7 @@ fun main() {
                 App(
                     isDarkTheme = isDarkTheme,
                     showTypeStatsInitial = showTypeStats,
+                    systemAccentColorHex = systemAccentColor,
                     onThemeToggle = { isDarkTheme = !isDarkTheme },
                     onStatsToggle = { showTypeStats = !showTypeStats },
                     onExit = { exitApplication() }
