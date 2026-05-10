@@ -2,8 +2,8 @@
 
 ## Phase 9: Extreme High-Performance Engine Redesign - [COMPLETED]
 - [x] **Parallel I/O Engine:** Replaced single-threaded `Files.walkFileTree` with a custom `ForkJoinPool` architecture implementing "Directory-Granular Parallelism". 
-- [x] **Memory & CPU Balance:** Tasks are spawned per-directory (for optimal work-stealing and NVMe saturation) but files within a directory are parsed sequentially via `DirectoryStream` to strictly bound object allocation overhead.
-- [x] **Thread-Safe Reporting:** Implemented a non-locking, time-throttled progress reporter using `AtomicLong` and `compareAndSet` to prevent UI thread flooding during massively parallel scans.
+- [x] **Memory & CPU Balance:** Tasks are spawned per-directory. Files are parsed using `Files.walkFileTree` with `maxDepth=1` to get file attributes (sizes) for free from the OS (especially on Windows), avoiding a massive number of slow, independent `stat` syscalls.
+- [x] **Thread-Safe Reporting:** Implemented `LongAdder` instead of `AtomicLong` to completely eliminate cache-line contention when thousands of threads process millions of files. UI updates are locally batched (modulo 1000 files) per thread to avoid locking the CPU.
 
 ## Phase 10: Treemap Layout Refinement & Architecture Overhaul - [COMPLETED]
 - [x] **God File Elimination:** Completely refactored `Main.kt` (~300 lines) into modular Compose files (`App.kt`, `TreemapCanvas.kt`, `Toolbar.kt`, etc.).
