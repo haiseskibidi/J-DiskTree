@@ -58,6 +58,34 @@ public class ScanViewModel {
         });
     }
 
+    public void compareWithSnapshot(java.io.File targetFile, double width, double height) {
+        FileNode currentRoot = currentState.rootNode();
+        if (currentRoot == null) return;
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                FileNode baseRoot = com.jdisktree.scanner.ExportService.importSnapshotFromJson(targetFile.toPath());
+                com.jdisktree.domain.DiffNode diff = com.jdisktree.scanner.SnapshotService.compare(baseRoot, currentRoot);
+
+                // For simplicity in this iteration, we keep the current treemap layout 
+                // but we will use the diff metadata to color it.
+                // In a more advanced version, we might want to show removed files as well.
+                
+                List<TreeMapRect> rects = treemapService.calculateLayout(currentRoot, 0, 0, width, height);
+                SpatialGridIndex index = new SpatialGridIndex(100, 100, width, height);
+                for (TreeMapRect rect : rects) {
+                    index.add(rect);
+                }
+                List<FileTypeStat> stats = calculateTypeStats(currentRoot);
+
+                updateState(s -> s.withDiff(diff, rects, index, stats));
+            } catch (java.io.IOException e) {
+                updateState(s -> s.withError("Comparison failed: " + e.getMessage()));
+                e.printStackTrace();
+            }
+        });
+    }
+
     public void openInExplorer(String path) {
         fileOps.openInExplorer(path);
     }
@@ -70,12 +98,28 @@ public class ScanViewModel {
         updateState(s -> s.withSelectedPaths(paths));
     }
 
+    public void togglePathExpansion(String path) {
+        updateState(s -> {
+            Set<String> newExpanded = new java.util.HashSet<>(s.expandedPaths());
+            if (newExpanded.contains(path)) {
+                newExpanded.remove(path);
+            } else {
+                newExpanded.add(path);
+            }
+            return s.withExpandedPaths(newExpanded);
+        });
+    }
+
     public void setSearchQuery(String query) {
         updateState(s -> s.withSearchQuery(query != null ? query : ""));
     }
 
     public void setAgeFilter(int days) {
         updateState(s -> s.withAgeFilter(days));
+    }
+
+    public void clearDiff() {
+        updateState(s -> s.withDiff(null, s.rects(), s.index(), s.typeStats()));
     }
 
     public void moveSelectedToTrash(Collection<String> paths, double width, double height) {

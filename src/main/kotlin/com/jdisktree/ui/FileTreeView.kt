@@ -24,6 +24,8 @@ import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
+import com.jdisktree.domain.DiffNode
+import com.jdisktree.domain.DiffStatus
 import com.jdisktree.domain.FileNode
 import com.jdisktree.state.UiState
 import java.nio.file.Paths
@@ -32,9 +34,14 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 
 data class FlatNode(
-    val fileNode: FileNode,
+    val path: String,
+    val name: String,
+    val size: Long,
+    val deltaSize: Long = 0,
+    val isDirectory: Boolean,
     val level: Int,
-    val isExpanded: Boolean
+    val isExpanded: Boolean,
+    val diffStatus: DiffStatus? = null
 )
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
@@ -42,64 +49,82 @@ data class FlatNode(
 fun FileTreeView(
     stableRoot: StableFileTree,
     uiState: UiState,
-    selectionAnchor: String?,
     customColors: List<FileColorConfig> = emptyList(),
     onSelect: (String?, Boolean, Boolean, List<String>) -> Unit, // path, isCtrl, isShift, allVisiblePaths
+    onToggleExpansion: (String) -> Unit,
     onSecondaryClick: (Set<String>, Offset) -> Unit
 ) {
     val rootNode = stableRoot.root
+    val diffRoot = uiState.diffNode()
     val selectedPaths = uiState.selectedPaths()
-    if (rootNode == null) {
+    val expandedPaths = uiState.expandedPaths()
+    
+    if (rootNode == null && diffRoot == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(stringResource("no_data"), color = Color.Gray)
         }
         return
     }
 
-    var expandedPaths by remember { mutableStateOf(setOf(rootNode.absolutePath())) }
-
     // Auto-expand when a single new path is selected (e.g. from treemap)
     LaunchedEffect(selectedPaths) {
         if (selectedPaths.size == 1) {
             val path = selectedPaths.first()
-            val newExpanded = expandedPaths.toMutableSet()
-            var currentPath = Paths.get(path).parent
+            var currentPath = try { Paths.get(path).parent } catch (e: Exception) { null }
             while (currentPath != null) {
                 val pathStr = currentPath.toAbsolutePath().toString()
-                newExpanded.add(pathStr)
+                if (!expandedPaths.contains(pathStr)) {
+                    onToggleExpansion(pathStr)
+                }
                 currentPath = currentPath.parent
             }
-            expandedPaths = newExpanded
         }
     }
 
     // Flatten the tree for LazyColumn
-    val flatNodes = remember(rootNode, expandedPaths) {
+    val flatNodes = remember(rootNode, diffRoot, expandedPaths) {
         val result = mutableListOf<FlatNode>()
         
-        fun traverse(node: FileNode, level: Int) {
-            val isExpanded = expandedPaths.contains(node.absolutePath())
-            result.add(FlatNode(node, level, isExpanded))
+        if (diffRoot != null) {
+            fun traverseDiff(node: DiffNode, level: Int) {
+                val isExpanded = expandedPaths.contains(node.absolutePath)
+                result.add(FlatNode(node.absolutePath, node.name, node.currentSize, node.deltaSize, node.isDirectory, level, isExpanded, node.status))
 
-            if (isExpanded && node.isDirectory) {
-                node.children().sortedByDescending { child -> child.size() }.forEach { child ->
-                    traverse(child, level + 1)
+                if (isExpanded && node.isDirectory) {
+                    node.children.sortedWith(compareByDescending<DiffNode> { it.deltaSize != 0L }
+                        .thenByDescending { Math.abs(it.deltaSize) }
+                        .thenByDescending { it.currentSize }
+                    ).forEach { child ->
+                        traverseDiff(child, level + 1)
+                    }
                 }
             }
+            traverseDiff(diffRoot, 0)
+        } else if (rootNode != null) {
+            fun traverse(node: FileNode, level: Int) {
+                val isExpanded = expandedPaths.contains(node.absolutePath())
+                result.add(FlatNode(node.absolutePath(), node.name(), node.size(), 0, node.isDirectory, level, isExpanded))
+
+                if (isExpanded && node.isDirectory) {
+                    node.children().sortedByDescending { it.size() }.forEach { child ->
+                        traverse(child, level + 1)
+                    }
+                }
+            }
+            traverse(rootNode, 0)
         }
-        traverse(rootNode, 0)
         result
     }
     
-    val allVisiblePaths = remember(flatNodes) { flatNodes.map { node: FlatNode -> node.fileNode.absolutePath() } }
+    val allVisiblePaths = remember(flatNodes) { flatNodes.map { it.path } }
 
     val listState = rememberLazyListState()
 
-    // Simple Centered Scroll: Always put the selected file in the middle
+    // Simple Centered Scroll
     LaunchedEffect(selectedPaths, flatNodes) {
         if (selectedPaths.size == 1) {
             val path = selectedPaths.first()
-            val fileIndex = flatNodes.indexOfFirst { node: FlatNode -> node.fileNode.absolutePath() == path }
+            val fileIndex = flatNodes.indexOfFirst { it.path == path }
             if (fileIndex >= 0) {
                 val layoutInfo = listState.layoutInfo
                 val visibleItemsCount = layoutInfo.visibleItemsInfo.size.takeIf { it > 0 } ?: 20
@@ -124,10 +149,17 @@ fun FileTreeView(
                     }
                 }
         ) {
-            items(flatNodes, key = { node -> node.fileNode.absolutePath() }) { flatNode ->
-                val node = flatNode.fileNode
-                val isSelected = selectedPaths.contains(node.absolutePath())
+            items(flatNodes, key = { it.path + it.level }) { flatNode ->
+                val isSelected = selectedPaths.contains(flatNode.path)
                 var rowPosition by remember { mutableStateOf(Offset.Zero) }
+                
+                // Status colors
+                val statusColor = when (flatNode.diffStatus) {
+                    DiffStatus.ADDED -> Color(0xFF2ECC71)
+                    DiffStatus.REMOVED -> Color(0xFFE74C3C)
+                    DiffStatus.MODIFIED -> Color(0xFFF1C40F)
+                    else -> null
+                }
 
                 Row(
                     modifier = Modifier
@@ -146,30 +178,26 @@ fun FileTreeView(
                                     val finalSelection = if (isSelected) {
                                         selectedPaths
                                     } else {
-                                        onSelect(node.absolutePath(), false, false, allVisiblePaths)
-                                        setOf(node.absolutePath())
+                                        onSelect(flatNode.path, false, false, allVisiblePaths)
+                                        setOf(flatNode.path)
                                     }
                                     onSecondaryClick(finalSelection, rowPosition + change.position)
                                 } else {
-                                    if (node.isDirectory && !isCtrl && !isShift) {
-                                        expandedPaths = if (flatNode.isExpanded) {
-                                            expandedPaths - node.absolutePath()
-                                        } else {
-                                            expandedPaths + node.absolutePath()
-                                        }
+                                    if (flatNode.isDirectory && !isCtrl && !isShift) {
+                                        onToggleExpansion(flatNode.path)
                                     }
-                                    onSelect(node.absolutePath(), isCtrl, isShift, allVisiblePaths)
+                                    onSelect(flatNode.path, isCtrl, isShift, allVisiblePaths)
                                 }
-                                change.consume() // CONSUME EVENT
+                                change.consume()
                             }
                         }
                         .padding(start = (flatNode.level * 16 + 4).dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (node.isDirectory) {
+                    if (flatNode.isDirectory) {
                         Text(
                             text = if (flatNode.isExpanded) "▼" else "▶",
-                            color = Color.LightGray,
+                            color = statusColor ?: Color.LightGray,
                             modifier = Modifier.width(16.dp),
                             style = MaterialTheme.typography.caption
                         )
@@ -179,30 +207,38 @@ fun FileTreeView(
 
                     Spacer(modifier = Modifier.width(Dimens.SpacingSmall))
 
-                    // Color block representing file type
-                    val ext = if (node.isDirectory) "dir_block" else {
-                        val dotIndex = node.name().lastIndexOf('.')
-                        if (dotIndex > 0) node.name().substring(dotIndex + 1) else ""
+                    val ext = if (flatNode.isDirectory) "dir_block" else {
+                        val dotIndex = flatNode.name.lastIndexOf('.')
+                        if (dotIndex > 0) flatNode.name.substring(dotIndex + 1) else ""
                     }
-                    val color = getColorForExtension(ext, customColors)
+                    val color = if (statusColor != null) statusColor else getColorForExtension(ext, customColors)
 
                     Box(modifier = Modifier.size(Dimens.IconSmall).background(color, RoundedCornerShape(Dimens.RadiusSmall)))
 
                     Spacer(modifier = Modifier.width(Dimens.SpacingMedium))
 
                     Text(
-                        text = node.name(),
-                        color = Color.White,
+                        text = flatNode.name,
+                        color = statusColor ?: Color.White,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.body2
                     )
 
+                    if (flatNode.deltaSize != 0L) {
+                        Text(
+                            text = (if (flatNode.deltaSize > 0) "+" else "") + formatSize(flatNode.deltaSize),
+                            color = statusColor ?: Color.Gray,
+                            style = MaterialTheme.typography.caption,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                    }
+
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Text(
-                        text = formatSize(node.size()),
+                        text = formatSize(flatNode.size),
                         color = Color.Gray,
                         style = MaterialTheme.typography.caption
                     )

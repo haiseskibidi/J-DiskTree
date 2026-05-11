@@ -16,7 +16,7 @@ import com.jdisktree.state.UiState
 @Composable
 fun StatusBanner(state: UiState) {
     val statusText = when (state.status()) {
-        ScanStatus.IDLE -> ""
+        ScanStatus.IDLE, null -> ""
         ScanStatus.SCANNING -> stringResource("status_scanning")
         ScanStatus.CALCULATING_TREEMAP -> stringResource("status_calculating")
         ScanStatus.COMPLETED -> stringResource("status_completed")

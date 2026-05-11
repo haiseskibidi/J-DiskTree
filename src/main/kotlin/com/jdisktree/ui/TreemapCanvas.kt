@@ -20,6 +20,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import com.jdisktree.domain.TreeMapRect
 import com.jdisktree.treemap.index.SpatialGridIndex
+import com.jdisktree.domain.DiffNode
+import com.jdisktree.domain.DiffStatus
 
 import com.jdisktree.domain.FileColorConfig
 
@@ -32,6 +34,7 @@ fun TreemapCanvas(
     highlightedExtension: String?,
     searchQuery: String = "",
     ageFilterDays: Int = 0,
+    diffNode: DiffNode? = null,
     customColors: List<FileColorConfig> = emptyList(),
     baseWidth: Double,
     baseHeight: Double,
@@ -45,7 +48,7 @@ fun TreemapCanvas(
     var canvasPosition by remember { mutableStateOf(Offset.Zero) }
     
     // Background Bitmap generation logic with debouncing
-    val treemapBitmap by produceState<ImageBitmap?>(initialValue = null, rects, highlightedExtension, searchQuery, ageFilterDays, customColors) {
+    val treemapBitmap by produceState<ImageBitmap?>(initialValue = null, rects, highlightedExtension, searchQuery, ageFilterDays, diffNode, customColors) {
         if (rects.isEmpty()) {
             value = null
             return@produceState
@@ -65,6 +68,10 @@ fun TreemapCanvas(
             val scaleX = internalW.toFloat() / baseWidth.toFloat()
             val scaleY = internalH.toFloat() / baseHeight.toFloat()
             val now = System.currentTimeMillis()
+
+            // Pre-calculate diff mapping for fast lookup during render
+            val diffMap = mutableMapOf<String, DiffStatus>()
+            diffNode?.let { buildDiffMap(it, diffMap) }
 
             val dirPaint = Paint().apply { color = Color(0xFF242424) }
             rects.forEach { rect ->
@@ -86,13 +93,22 @@ fun TreemapCanvas(
 
                     var baseColor = getColorForExtension(rect.extension(), customColors)
                     
+                    val status = diffMap[rect.path()]
+                    if (diffNode != null) {
+                        baseColor = when (status) {
+                            DiffStatus.ADDED -> Color(0xFF2ECC71) // Material Emerald
+                            DiffStatus.MODIFIED -> Color(0xFFF1C40F) // Material Sunflower
+                            else -> baseColor.copy(alpha = 0.1f) // Dim unchanged in diff mode
+                        }
+                    }
+
                     // Apply Dimming (Extension Filter + Search Filter + Age Filter)
                     val matchesExtension = highlightedExtension == null || rect.extension() == highlightedExtension
                     val matchesSearch = searchQuery.isBlank() || rect.path().contains(searchQuery, ignoreCase = true)
                     val matchesAge = ageFilterDays == 0 || 
                         (now - rect.lastModified) > (ageFilterDays.toLong() * 24 * 60 * 60 * 1000L)
                     
-                    if (!matchesExtension || !matchesSearch || !matchesAge) {
+                    if (diffNode == null && (!matchesExtension || !matchesSearch || !matchesAge)) {
                         baseColor = baseColor.copy(alpha = 0.15f)
                     }
 
@@ -110,7 +126,7 @@ fun TreemapCanvas(
                         canvas.drawRect(androidx.compose.ui.geometry.Rect(drawX, drawY, drawX + drawW, drawY + drawH), paint)
                         
                         val lightPaint = Paint().apply {
-                            color = Color.White.copy(alpha = if (highlightedExtension == null && searchQuery.isBlank()) 0.15f else 0.05f)
+                            color = Color.White.copy(alpha = if (highlightedExtension == null && searchQuery.isBlank() && diffNode == null) 0.15f else 0.05f)
                             strokeWidth = 1f
                             style = PaintingStyle.Stroke
                         }
@@ -208,4 +224,11 @@ fun TreemapCanvas(
             }
         }
     }
+}
+
+private fun buildDiffMap(node: DiffNode, map: MutableMap<String, DiffStatus>) {
+    if (node.status != DiffStatus.UNCHANGED) {
+        map[node.absolutePath] = node.status
+    }
+    node.children.forEach { buildDiffMap(it, map) }
 }

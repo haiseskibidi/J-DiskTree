@@ -32,6 +32,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.unit.IntOffset
 
 @Composable
@@ -97,7 +98,7 @@ fun Toolbar(
                 Popup(
                     onDismissRequest = { ageMenuExpanded = false },
                     offset = IntOffset(0, 64),
-                    focusable = true
+                    properties = PopupProperties(focusable = true)
                 ) {
                     Card(
                         elevation = 8.dp,

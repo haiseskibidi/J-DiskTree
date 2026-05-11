@@ -15,14 +15,23 @@ import java.util.Stack;
  */
 public class ExportService {
 
-    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     /**
      * Exports the file tree to a structured JSON file.
      */
-    public void exportToJson(FileNode root, Path target) throws IOException {
+    public static void exportToJson(FileNode root, Path target) throws IOException {
         try (BufferedWriter writer = Files.newBufferedWriter(target)) {
             gson.toJson(root, writer);
+        }
+    }
+
+    /**
+     * Imports a previously saved snapshot from a JSON file.
+     */
+    public static FileNode importSnapshotFromJson(Path source) throws IOException {
+        try (java.io.Reader reader = Files.newBufferedReader(source)) {
+            return gson.fromJson(reader, FileNode.class);
         }
     }
 
@@ -30,7 +39,7 @@ public class ExportService {
      * Exports the file tree to a flat CSV file.
      * Format: Name, Path, Size (Bytes), IsDirectory
      */
-    public void exportToCsv(FileNode root, Path target) throws IOException {
+    public static void exportToCsv(FileNode root, Path target) throws IOException {
         try (BufferedWriter writer = Files.newBufferedWriter(target)) {
             // Add UTF-8 BOM for Windows/Excel compatibility
             writer.write('\uFEFF');
@@ -66,7 +75,7 @@ public class ExportService {
         }
     }
 
-    private String escapeCsv(String value) {
+    private static String escapeCsv(String value) {
         if (value == null) return "";
         return value.replace("\"", "\"\"");
     }

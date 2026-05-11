@@ -72,6 +72,7 @@ fun App(
         
         if (path == null) {
             currentSelection.clear()
+            if (uiState.diffNode != null) viewModel.clearDiff()
         } else {
             when {
                 isShift && selectionAnchor != null -> {
@@ -104,6 +105,7 @@ fun App(
         val currentSelection = uiState.selectedPaths().toMutableSet()
         if (path == null) {
             currentSelection.clear()
+            if (uiState.diffNode != null) viewModel.clearDiff()
         } else if (isCtrl) {
             if (currentSelection.contains(path)) currentSelection.remove(path)
             else currentSelection.add(path)
@@ -171,22 +173,23 @@ fun App(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Custom Menu Bar
-                MainMenu(
-                    isDarkTheme = isDarkTheme,
-                    showStats = showTypeStats,
-                    hasData = uiState.rootNode() != null,
-                    onThemeToggle = onThemeToggle,
-                    onStatsToggle = { 
-                        showTypeStats = !showTypeStats
-                        onStatsToggle()
-                    },
-                    onNewScan = { 
-                        DirectoryPicker.pickDirectory()?.let { pickedPath -> pathText = pickedPath }
-                    },
-                    onExport = { format, file -> viewModel.exportData(format, file) },
-                    onOpenSettings = { showSettings = true },
-                    onExit = onExit
-                )
+                    MainMenu(
+                        isDarkTheme = isDarkTheme,
+                        showStats = showTypeStats,
+                        hasData = uiState.rootNode() != null,
+                        onThemeToggle = onThemeToggle,
+                        onStatsToggle = { 
+                            showTypeStats = !showTypeStats
+                            onStatsToggle()
+                        },
+                        onNewScan = { 
+                            DirectoryPicker.pickDirectory()?.let { pickedPath -> pathText = pickedPath }
+                        },
+                        onExport = { format, file -> viewModel.exportData(format, file) },
+                        onCompareSnapshot = { file -> viewModel.compareWithSnapshot(file, 1000.0, 1000.0) },
+                        onOpenSettings = { showSettings = true },
+                        onExit = onExit
+                    )
 
                 Column(modifier = Modifier.fillMaxSize().padding(Dimens.ToolbarPadding)) {
                     Toolbar(
@@ -232,9 +235,9 @@ fun App(
                                         FileTreeView(
                                             stableRoot = stableRoot,
                                             uiState = uiState,
-                                            selectionAnchor = selectionAnchor,
                                             customColors = fileColors,
                                             onSelect = onSelectMulti,
+                                            onToggleExpansion = { path -> viewModel.togglePathExpansion(path) },
                                             onSecondaryClick = onSecondaryClickMulti
                                         )
                                     }
@@ -254,11 +257,11 @@ fun App(
                                             stableData = stableRects,
                                             index = uiState.index(),
                                             selectedPaths = selectedPaths,
-                                            highlightedExtension = highlightedExtension,
+                                            highlightedExtension = highlightedExtension,  
                                             searchQuery = uiState.searchQuery(),
                                             ageFilterDays = uiState.ageFilterDays(),
-                                            customColors = fileColors,
-                                            isResizing = resizingSide != ResizingSide.NONE,
+                                            diffNode = uiState.diffNode,
+                                            customColors = fileColors,                                            isResizing = resizingSide != ResizingSide.NONE,
                                             onSelect = onTreemapSelect,
                                             onSecondaryClick = onSecondaryClickMulti
                                         )

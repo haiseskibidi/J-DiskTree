@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import com.jdisktree.domain.TreeMapRect
+import com.jdisktree.domain.DiffNode
 import com.jdisktree.treemap.index.SpatialGridIndex
 
 import com.jdisktree.domain.FileColorConfig
@@ -18,6 +19,7 @@ fun TreemapWithTooltip(
     highlightedExtension: String?,
     searchQuery: String = "",
     ageFilterDays: Int = 0,
+    diffNode: DiffNode? = null,
     customColors: List<FileColorConfig> = emptyList(),
     isResizing: Boolean = false,
     onSelect: (String?, Boolean) -> Unit,
@@ -34,6 +36,7 @@ fun TreemapWithTooltip(
             highlightedExtension = highlightedExtension,
             searchQuery = searchQuery,
             ageFilterDays = ageFilterDays,
+            diffNode = diffNode,
             customColors = customColors,
             baseWidth = 1000.0,
             baseHeight = 1000.0,
