@@ -36,7 +36,7 @@ public class TreemapService {
         }
 
         String extension = node.isDirectory() ? "" : getExtension(node.name());
-        result.add(new TreeMapRect(node.absolutePath(), x, y, w, h, node.isDirectory(), extension, node.size()));
+        result.add(new TreeMapRect(node.absolutePath(), x, y, w, h, node.isDirectory(), extension, node.size(), node.lastModified()));
 
         if (!node.isDirectory() || node.children().isEmpty()) {
             return;

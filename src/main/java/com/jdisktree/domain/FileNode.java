@@ -19,6 +19,7 @@ public record FileNode(
         String name,
         String absolutePath,
         long size,
+        long lastModified,
         boolean isDirectory,
         List<FileNode> children
 ) {
@@ -39,6 +40,21 @@ public record FileNode(
         return pruneInternal(targets);
     }
 
+    /**
+     * Convenience constructor for a file node (no children).
+     */
+    public static FileNode file(String name, String absolutePath, long size, long lastModified) {
+        return new FileNode(name, absolutePath, size, lastModified, false, Collections.emptyList());
+    }
+
+    /**
+     * Convenience constructor for a directory node.
+     */
+    public static FileNode directory(String name, String absolutePath, long size, long lastModified, List<FileNode> children) {
+        return new FileNode(name, absolutePath, size, lastModified, true, children);
+    }
+
+    // Overload for pruning (carrying over lastModified)
     private FileNode pruneInternal(Set<String> targets) {
         if (targets.contains(this.absolutePath)) {
             return null;
@@ -75,29 +91,6 @@ public record FileNode(
             return this; 
         }
 
-        return new FileNode(name, absolutePath, newSize, true, newChildren);
-    }
-
-    /**
-     * Recursively creates a new tree with the specified target path removed.
-     * All parent directory sizes are automatically updated.
-     * Returns null if this node itself is the target to be removed.
-     */
-    public FileNode prune(String targetPath) {
-        return prune(Collections.singletonList(targetPath));
-    }
-
-    /**
-     * Convenience constructor for a file node (no children).
-     */
-    public static FileNode file(String name, String absolutePath, long size) {
-        return new FileNode(name, absolutePath, size, false, Collections.emptyList());
-    }
-
-    /**
-     * Convenience constructor for a directory node.
-     */
-    public static FileNode directory(String name, String absolutePath, long size, List<FileNode> children) {
-        return new FileNode(name, absolutePath, size, true, children);
+        return new FileNode(name, absolutePath, newSize, lastModified, true, newChildren);
     }
 }

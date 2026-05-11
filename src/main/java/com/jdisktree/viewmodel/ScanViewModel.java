@@ -74,6 +74,10 @@ public class ScanViewModel {
         updateState(s -> s.withSearchQuery(query != null ? query : ""));
     }
 
+    public void setAgeFilter(int days) {
+        updateState(s -> s.withAgeFilter(days));
+    }
+
     public void moveSelectedToTrash(Collection<String> paths, double width, double height) {
         CompletableFuture.runAsync(() -> {
             for (String path : paths) {

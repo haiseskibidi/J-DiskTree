@@ -256,6 +256,7 @@ fun App(
                                             selectedPaths = selectedPaths,
                                             highlightedExtension = highlightedExtension,
                                             searchQuery = uiState.searchQuery(),
+                                            ageFilterDays = uiState.ageFilterDays(),
                                             customColors = fileColors,
                                             isResizing = resizingSide != ResizingSide.NONE,
                                             onSelect = onTreemapSelect,

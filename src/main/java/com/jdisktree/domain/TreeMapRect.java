@@ -19,5 +19,6 @@ public record TreeMapRect(
         double height,
         boolean isDirectory,
         String extension,
-        long size
+        long size,
+        long lastModified
 ) {}

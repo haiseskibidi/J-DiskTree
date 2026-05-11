@@ -13,17 +13,18 @@ import com.jdisktree.domain.FileColorConfig
 @Composable
 fun TreemapWithTooltip(
     stableData: StableTreemapData,
-    index: SpatialGridIndex,
+    index: SpatialGridIndex?,
     selectedPaths: Set<String>,
     highlightedExtension: String?,
     searchQuery: String = "",
+    ageFilterDays: Int = 0,
     customColors: List<FileColorConfig> = emptyList(),
     isResizing: Boolean = false,
-    onSelect: (String?, Boolean) -> Unit, // path, isCtrl
+    onSelect: (String?, Boolean) -> Unit,
     onSecondaryClick: (Set<String>, Offset) -> Unit
 ) {
-    var hoveredRect by remember { mutableStateOf<TreeMapRect?>(null) }
-    var mousePosition by remember { mutableStateOf(Offset.Zero) }
+    var hoverRect by remember { mutableStateOf<TreeMapRect?>(null) }
+    var mousePos by remember { mutableStateOf(Offset.Zero) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         TreemapCanvas(
@@ -32,13 +33,14 @@ fun TreemapWithTooltip(
             selectedPaths = selectedPaths,
             highlightedExtension = highlightedExtension,
             searchQuery = searchQuery,
+            ageFilterDays = ageFilterDays,
             customColors = customColors,
             baseWidth = 1000.0,
             baseHeight = 1000.0,
             isResizing = isResizing,
             onHover = { rect, pos ->
-                hoveredRect = rect
-                mousePosition = pos
+                hoverRect = rect
+                mousePos = pos
             },
             onClick = onSelect,
             onSecondaryClick = onSecondaryClick
@@ -46,8 +48,8 @@ fun TreemapWithTooltip(
 
         // Only show tooltip if NOT resizing for better performance
         if (!isResizing) {
-            hoveredRect?.let { rect ->
-                Tooltip(rect, mousePosition)
+            hoverRect?.let { rect ->
+                Tooltip(rect, mousePos)
             }
         }
     }

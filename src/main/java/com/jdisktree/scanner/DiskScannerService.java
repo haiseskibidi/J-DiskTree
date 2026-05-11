@@ -127,9 +127,13 @@ public class DiskScannerService {
             List<FileNode> childNodes = new ArrayList<>();
             List<DirectoryScanTask> subTasks = new ArrayList<>();
             long[] dirSize = {0};
+            long[] dirLastModified = {0};
             boolean[] isRoot = {true};
 
             try {
+                BasicFileAttributes dirAttrs = Files.readAttributes(dirPath, BasicFileAttributes.class);
+                dirLastModified[0] = dirAttrs.lastModifiedTime().toMillis();
+
                 Files.walkFileTree(dirPath, EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<Path>() {
                     @Override
                     public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
@@ -153,8 +157,9 @@ public class DiskScannerService {
                             subTasks.add(new DirectoryScanTask(file, depth + 1));
                         } else {
                             long size = attrs.size();
+                            long lastModified = attrs.lastModifiedTime().toMillis();
                             String name = file.getFileName() != null ? file.getFileName().toString() : file.toString();
-                            childNodes.add(FileNode.file(name, file.toAbsolutePath().toString(), size));
+                            childNodes.add(FileNode.file(name, file.toAbsolutePath().toString(), size, lastModified));
                             dirSize[0] += size;
                             
                             totalFiles.increment();
@@ -188,7 +193,7 @@ public class DiskScannerService {
             }
 
             String name = dirPath.getFileName() != null ? dirPath.getFileName().toString() : dirPath.toString();
-            return FileNode.directory(name, dirPath.toAbsolutePath().toString(), dirSize[0], childNodes);
+            return FileNode.directory(name, dirPath.toAbsolutePath().toString(), dirSize[0], dirLastModified[0], childNodes);
         }
     }
 }

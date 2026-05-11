@@ -31,6 +31,7 @@ fun TreemapCanvas(
     selectedPaths: Set<String>,
     highlightedExtension: String?,
     searchQuery: String = "",
+    ageFilterDays: Int = 0,
     customColors: List<FileColorConfig> = emptyList(),
     baseWidth: Double,
     baseHeight: Double,
@@ -44,14 +45,14 @@ fun TreemapCanvas(
     var canvasPosition by remember { mutableStateOf(Offset.Zero) }
     
     // Background Bitmap generation logic with debouncing
-    val treemapBitmap by produceState<ImageBitmap?>(initialValue = null, rects, highlightedExtension, searchQuery, customColors) {
+    val treemapBitmap by produceState<ImageBitmap?>(initialValue = null, rects, highlightedExtension, searchQuery, ageFilterDays, customColors) {
         if (rects.isEmpty()) {
             value = null
             return@produceState
         }
 
-        // Debounce search input to keep UI responsive
-        if (searchQuery.isNotBlank()) {
+        // Debounce search/filter input to keep UI responsive
+        if (searchQuery.isNotBlank() || ageFilterDays > 0) {
             kotlinx.coroutines.delay(60)
         }
 
@@ -63,6 +64,7 @@ fun TreemapCanvas(
             
             val scaleX = internalW.toFloat() / baseWidth.toFloat()
             val scaleY = internalH.toFloat() / baseHeight.toFloat()
+            val now = System.currentTimeMillis()
 
             val dirPaint = Paint().apply { color = Color(0xFF242424) }
             rects.forEach { rect ->
@@ -84,11 +86,13 @@ fun TreemapCanvas(
 
                     var baseColor = getColorForExtension(rect.extension(), customColors)
                     
-                    // Apply Dimming (Extension Filter + Search Filter)
+                    // Apply Dimming (Extension Filter + Search Filter + Age Filter)
                     val matchesExtension = highlightedExtension == null || rect.extension() == highlightedExtension
                     val matchesSearch = searchQuery.isBlank() || rect.path().contains(searchQuery, ignoreCase = true)
+                    val matchesAge = ageFilterDays == 0 || 
+                        (now - rect.lastModified) > (ageFilterDays.toLong() * 24 * 60 * 60 * 1000L)
                     
-                    if (!matchesExtension || !matchesSearch) {
+                    if (!matchesExtension || !matchesSearch || !matchesAge) {
                         baseColor = baseColor.copy(alpha = 0.15f)
                     }
 

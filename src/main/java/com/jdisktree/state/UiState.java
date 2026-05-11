@@ -31,33 +31,38 @@ public record UiState(
         List<FileTypeStat> typeStats,
         Set<String> selectedPaths,
         String searchQuery,
+        int ageFilterDays,
         String errorMessage
 ) {
     public static UiState idle() {
-        return new UiState(ScanStatus.IDLE, null, List.of(), null, null, List.of(), Collections.emptySet(), "", null);
+        return new UiState(ScanStatus.IDLE, null, List.of(), null, null, List.of(), Collections.emptySet(), "", 0, null);
     }
 
     public UiState withProgress(ScanProgress progress) {
-        return new UiState(ScanStatus.SCANNING, progress, List.of(), null, null, List.of(), Collections.emptySet(), searchQuery, null);
+        return new UiState(ScanStatus.SCANNING, progress, List.of(), null, null, List.of(), Collections.emptySet(), searchQuery, ageFilterDays, null);
     }
 
     public UiState withRects(List<TreeMapRect> rects, SpatialGridIndex index, FileNode rootNode, List<FileTypeStat> typeStats) {
-        return new UiState(ScanStatus.COMPLETED, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, null);
+        return new UiState(ScanStatus.COMPLETED, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, ageFilterDays, null);
     }
 
     public UiState withSelectedPaths(Set<String> selectedPaths) {
-        return new UiState(status, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, errorMessage);
+        return new UiState(status, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, ageFilterDays, errorMessage);
     }
 
     public UiState withSearchQuery(String searchQuery) {
-        return new UiState(status, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, errorMessage);
+        return new UiState(status, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, ageFilterDays, errorMessage);
+    }
+
+    public UiState withAgeFilter(int ageFilterDays) {
+        return new UiState(status, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, ageFilterDays, errorMessage);
     }
 
     public UiState withError(String message) {
-        return new UiState(ScanStatus.ERROR, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, message);
+        return new UiState(ScanStatus.ERROR, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, ageFilterDays, message);
     }
 
     public UiState calculating() {
-        return new UiState(ScanStatus.CALCULATING_TREEMAP, progress, rects, index, null, List.of(), Collections.emptySet(), searchQuery, null);
+        return new UiState(ScanStatus.CALCULATING_TREEMAP, progress, rects, index, null, List.of(), Collections.emptySet(), searchQuery, ageFilterDays, null);
     }
 }
