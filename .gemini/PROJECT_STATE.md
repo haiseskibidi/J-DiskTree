@@ -33,14 +33,15 @@
 - [x] **Dark-Themed Color Picker:** Integrated **FlatLaf** library to provide a beautiful, theme-aware native `JColorChooser` with HSV as the default tab.
 - [x] **Single Source of Truth:** Migrated all preferences (Exclusions & Colors) to structured JSON storage (`settings.json`, `colors.json`) via **Gson**, ensuring a robust configuration layer.
 
-## Phase 15: Interactive Selection & UX Mastery (Release v1.2.0) - [COMPLETED]
+## Phase 15: Interactive Selection & UX Mastery (Release v1.3.0) - [COMPLETED]
 - [x] **Intelligent Search Engine:** Implemented real-time "X-ray" search. Matches are highlighted on the Treemap while non-matches are dimmed. Added background rendering with a 60ms debounce to ensure perfectly fluid typing.
 - [x] **Multi-Selection Logic:** Implemented a robust `Set<String>` based selection system in the core state with Shift/Ctrl support.
 - [x] **Smart Synchronization:** Tree view automatically expands and centers any item selected on the Treemap. Clicking empty space in either view now clears the selection.
 - [x] **Liquid Smooth Resize:** Eliminated all resize lag by switching to a **GPU-accelerated fixed-size bitmap buffer (1000x1000)**. 
 - [x] **UX Polishing:** Implemented "Select on Right-Click", `Ctrl+F` shortcut support, and professional white border highlights.
-- [x] **v1.2.0 Milestone:** Finalized localization and distribution packaging for the major 1.2.0 release.
+- [x] **v1.3.0 Milestone:** Finalized localization and distribution packaging for the major 1.3.0 release.
+- [x] **Export Engine:** Implemented background-safe CSV (flat list) and JSON (hierarchical) report generation. CSV includes UTF-8 BOM for perfect Windows/Excel compatibility.
 
 ## Summary
-J-DiskTree is now a production-ready, high-performance disk space analyzer. It features a world-class parallel scanning engine, an intelligent real-time search system with background rendering, and a modern modular UI. The application supports advanced multi-selection, bi-directional synchronization, and liquid-smooth GPU-accelerated graphics. Fully packaged for Windows with persistent user settings and localization support.
+J-DiskTree is now a production-ready, high-performance disk space analyzer. It features a world-class parallel scanning engine, an intelligent real-time search system with background rendering, and a robust reporting system. The application supports advanced multi-selection, bi-directional synchronization, and liquid-smooth GPU-accelerated graphics. Fully packaged for Windows with persistent user settings, CSV/JSON export capabilities, and comprehensive localization support.
 
