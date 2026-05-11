@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.bundling.Zip
+
 plugins {
     kotlin("jvm") version "1.9.24"
     id("org.jetbrains.compose") version "1.6.10"
@@ -36,8 +38,29 @@ compose.desktop {
                 menuGroup = "J-DiskTree"
                 upgradeUuid = "8e9f5b61-4d3e-4f5c-8b2a-1c5d6e7f89ab" // Valid hexadecimal UUID
             }
+
+            buildTypes.release.proguard {
+                isEnabled.set(false)
+            }
         }
     }
+}
+
+tasks.register<Zip>("packagePortableZip") {
+    group = "compose desktop"
+    description = "Packs the release distributable into a portable ZIP archive"
+
+    // Ensure we create the distributable first
+    dependsOn("createReleaseDistributable")
+
+    val appName = "J-DiskTree" 
+    
+    // Pick everything from the App Image folder
+    from(layout.buildDirectory.dir("compose/binaries/main-release/app/$appName"))
+
+    // Set the archive name and destination
+    archiveFileName.set("${appName}-${project.version}-portable.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
