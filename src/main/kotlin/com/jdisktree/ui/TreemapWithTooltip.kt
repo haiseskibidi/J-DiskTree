@@ -16,6 +16,7 @@ fun TreemapWithTooltip(
     index: SpatialGridIndex,
     selectedPaths: Set<String>,
     highlightedExtension: String?,
+    searchQuery: String = "",
     customColors: List<FileColorConfig> = emptyList(),
     isResizing: Boolean = false,
     onSelect: (String, Boolean) -> Unit, // path, isCtrl
@@ -30,6 +31,7 @@ fun TreemapWithTooltip(
             index = index,
             selectedPaths = selectedPaths,
             highlightedExtension = highlightedExtension,
+            searchQuery = searchQuery,
             customColors = customColors,
             baseWidth = 1000.0,
             baseHeight = 1000.0,

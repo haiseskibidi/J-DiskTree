@@ -25,6 +25,7 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import com.jdisktree.domain.FileNode
+import com.jdisktree.state.UiState
 import java.nio.file.Paths
 
 import com.jdisktree.domain.FileColorConfig
@@ -39,13 +40,14 @@ data class FlatNode(
 @Composable
 fun FileTreeView(
     stableRoot: StableFileTree,
-    selectedPaths: Set<String>,
+    uiState: UiState,
     selectionAnchor: String?,
     customColors: List<FileColorConfig> = emptyList(),
     onSelect: (String, Boolean, Boolean, List<String>) -> Unit, // path, isCtrl, isShift, allVisiblePaths
     onSecondaryClick: (Set<String>, Offset) -> Unit
 ) {
     val rootNode = stableRoot.root
+    val selectedPaths = uiState.selectedPaths()
     if (rootNode == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(stringResource("no_data"), color = Color.Gray)
@@ -54,6 +56,7 @@ fun FileTreeView(
     }
 
     var expandedPaths by remember { mutableStateOf(setOf(rootNode.absolutePath())) }
+    val searchQuery = uiState.searchQuery()
 
     // Auto-expand when a single new path is selected (e.g. from treemap)
     LaunchedEffect(selectedPaths) {
@@ -63,18 +66,55 @@ fun FileTreeView(
             var currentPath = Paths.get(path).parent
             while (currentPath != null) {
                 val pathStr = currentPath.toAbsolutePath().toString()
-                if (newExpanded.add(pathStr)) {
-                    currentPath = currentPath.parent
-                } else break
+                newExpanded.add(pathStr)
+                currentPath = currentPath.parent
             }
             expandedPaths = newExpanded
         }
     }
 
-    // Flatten the tree for LazyColumn
-    val flatNodes = remember(rootNode, expandedPaths) {
+    fun hasMatchingDescendantRecursive(node: FileNode, query: String): Boolean {
+        return node.children().any { child ->
+            child.name().contains(query, ignoreCase = true) || 
+            (child.isDirectory && hasMatchingDescendantRecursive(child, query))
+        }
+    }
+
+    // Auto-expand on search
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isNotBlank()) {
+            val newExpanded = expandedPaths.toMutableSet()
+            fun expandMatching(node: FileNode) {
+                if (node.isDirectory) {
+                    val nameMatches = node.name().contains(searchQuery, ignoreCase = true)
+                    val hasMatchingDescendant = hasMatchingDescendantRecursive(node, searchQuery)
+                    if (nameMatches || hasMatchingDescendant) {
+                        newExpanded.add(node.absolutePath())
+                        node.children().forEach { expandMatching(it) }
+                    }
+                }
+            }
+            expandMatching(rootNode)
+            expandedPaths = newExpanded
+        }
+    }
+
+    // Flatten the tree for LazyColumn with filtering
+    val flatNodes = remember(rootNode, expandedPaths, searchQuery) {
         val result = mutableListOf<FlatNode>()
+        
+        fun matchesSearch(node: FileNode): Boolean {
+            if (searchQuery.isBlank()) return true
+            if (node.name().contains(searchQuery, ignoreCase = true)) return true
+            if (node.isDirectory) {
+                return hasMatchingDescendantRecursive(node, searchQuery)
+            }
+            return false
+        }
+
         fun traverse(node: FileNode, level: Int) {
+            if (!matchesSearch(node)) return
+
             val isExpanded = expandedPaths.contains(node.absolutePath())
             result.add(FlatNode(node, level, isExpanded))
 

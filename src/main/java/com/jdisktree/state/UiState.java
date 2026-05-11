@@ -30,29 +30,34 @@ public record UiState(
         FileNode rootNode,
         List<FileTypeStat> typeStats,
         Set<String> selectedPaths,
+        String searchQuery,
         String errorMessage
 ) {
     public static UiState idle() {
-        return new UiState(ScanStatus.IDLE, null, List.of(), null, null, List.of(), Collections.emptySet(), null);
+        return new UiState(ScanStatus.IDLE, null, List.of(), null, null, List.of(), Collections.emptySet(), "", null);
     }
 
     public UiState withProgress(ScanProgress progress) {
-        return new UiState(ScanStatus.SCANNING, progress, List.of(), null, null, List.of(), Collections.emptySet(), null);
+        return new UiState(ScanStatus.SCANNING, progress, List.of(), null, null, List.of(), Collections.emptySet(), searchQuery, null);
     }
 
     public UiState withRects(List<TreeMapRect> rects, SpatialGridIndex index, FileNode rootNode, List<FileTypeStat> typeStats) {
-        return new UiState(ScanStatus.COMPLETED, progress, rects, index, rootNode, typeStats, selectedPaths, null);
+        return new UiState(ScanStatus.COMPLETED, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, null);
     }
 
     public UiState withSelectedPaths(Set<String> selectedPaths) {
-        return new UiState(status, progress, rects, index, rootNode, typeStats, selectedPaths, errorMessage);
+        return new UiState(status, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, errorMessage);
+    }
+
+    public UiState withSearchQuery(String searchQuery) {
+        return new UiState(status, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, errorMessage);
     }
 
     public UiState withError(String message) {
-        return new UiState(ScanStatus.ERROR, progress, rects, index, rootNode, typeStats, selectedPaths, message);
+        return new UiState(ScanStatus.ERROR, progress, rects, index, rootNode, typeStats, selectedPaths, searchQuery, message);
     }
 
     public UiState calculating() {
-        return new UiState(ScanStatus.CALCULATING_TREEMAP, progress, rects, index, null, List.of(), Collections.emptySet(), null);
+        return new UiState(ScanStatus.CALCULATING_TREEMAP, progress, rects, index, null, List.of(), Collections.emptySet(), searchQuery, null);
     }
 }

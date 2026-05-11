@@ -51,6 +51,10 @@ public class ScanViewModel {
         updateState(s -> s.withSelectedPaths(paths));
     }
 
+    public void setSearchQuery(String query) {
+        updateState(s -> s.withSearchQuery(query != null ? query : ""));
+    }
+
     public void moveSelectedToTrash(Collection<String> paths, double width, double height) {
         CompletableFuture.runAsync(() -> {
             for (String path : paths) {

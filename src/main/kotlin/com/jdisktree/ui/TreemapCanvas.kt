@@ -30,6 +30,7 @@ fun TreemapCanvas(
     index: SpatialGridIndex?,
     selectedPaths: Set<String>,
     highlightedExtension: String?,
+    searchQuery: String = "",
     customColors: List<FileColorConfig> = emptyList(),
     baseWidth: Double,
     baseHeight: Double,
@@ -42,9 +43,8 @@ fun TreemapCanvas(
     var currentHover by remember { mutableStateOf<TreeMapRect?>(null) }
     var canvasPosition by remember { mutableStateOf(Offset.Zero) }
     
-    // (Bitmap logic remains same, but using updated parameters if needed)
-    val treemapBitmap = remember(rects, highlightedExtension, customColors) {
-        // ... (bitmap generation logic identical to previous version)
+    // Bitmap generation logic
+    val treemapBitmap = remember(rects, highlightedExtension, searchQuery, customColors) {
         if (rects.isEmpty()) null
         else {
             val internalW = 1000
@@ -74,8 +74,13 @@ fun TreemapCanvas(
                     val drawH = rect.height().toFloat() * scaleY
 
                     var baseColor = getColorForExtension(rect.extension(), customColors)
-                    if (highlightedExtension != null && rect.extension() != highlightedExtension) {
-                        baseColor = baseColor.copy(alpha = 0.2f)
+                    
+                    // Apply Dimming (Extension Filter + Search Filter)
+                    val matchesExtension = highlightedExtension == null || rect.extension() == highlightedExtension
+                    val matchesSearch = searchQuery.isBlank() || rect.path().contains(searchQuery, ignoreCase = true)
+                    
+                    if (!matchesExtension || !matchesSearch) {
+                        baseColor = baseColor.copy(alpha = 0.15f)
                     }
 
                     if (drawW < 3f || drawH < 3f) {
@@ -92,7 +97,7 @@ fun TreemapCanvas(
                         canvas.drawRect(androidx.compose.ui.geometry.Rect(drawX, drawY, drawX + drawW, drawY + drawH), paint)
                         
                         val lightPaint = Paint().apply {
-                            color = Color.White.copy(alpha = if (highlightedExtension == null) 0.15f else 0.05f)
+                            color = Color.White.copy(alpha = if (highlightedExtension == null && searchQuery.isBlank()) 0.15f else 0.05f)
                             strokeWidth = 1f
                             style = PaintingStyle.Stroke
                         }
@@ -176,7 +181,7 @@ fun TreemapCanvas(
             drawRect(Color.White, Offset(drawX, drawY), Size(drawW, drawH), style = Stroke(width = 3f))
         }
 
-        // Highlight ALL selected paths
+        // 2. Draw Selection: Thick solid white border (persistent)
         selectedPaths.forEach { path ->
             rects.find { it.path() == path }?.let { rect ->
                 val drawX = rect.x().toFloat() * scaleX

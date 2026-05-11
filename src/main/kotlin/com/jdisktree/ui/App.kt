@@ -12,6 +12,8 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.key.*
 import com.jdisktree.domain.TreeMapRect
 import com.jdisktree.state.ScanStatus
 import com.jdisktree.state.UiState
@@ -45,6 +47,8 @@ fun App(
     // Selection state (Sync with UiState)
     val selectedPaths = uiState.selectedPaths()
     var selectionAnchor by remember { mutableStateOf<String?>(null) }
+    
+    val searchFocusRequester = remember { FocusRequester() }
     
     var contextMenuPaths by remember { mutableStateOf<Set<String>>(emptySet()) }
     var contextMenuOffset by remember { mutableStateOf(Offset.Zero) }
@@ -126,7 +130,7 @@ fun App(
                 primary = systemAccentColor ?: darkColors().primary,
                 onPrimary = if (systemAccentColor != null) onAccentColor else darkColors().onPrimary,
                 secondary = systemAccentColor ?: darkColors().secondary,
-                onSecondary = if (systemAccentColor != null) onAccentColor else darkColors().onSecondary
+                onSecondary = if (systemAccentColor != null) onAccentColor else darkColors().onPrimary
             )
         } else {
             lightColors(
@@ -139,7 +143,19 @@ fun App(
     }
 
     MaterialTheme(colors = themeColors) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colors.background) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .onPreviewKeyEvent { event ->
+                    if (event.isCtrlPressed && event.key == Key.F && event.type == KeyEventType.KeyDown) {
+                        searchFocusRequester.requestFocus()
+                        true
+                    } else {
+                        false
+                    }
+                },
+            color = MaterialTheme.colors.background
+        ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Custom Menu Bar
                 MainMenu(
@@ -163,7 +179,8 @@ fun App(
                         pathText = pathText,
                         onPathChange = { newPath -> pathText = newPath },
                         viewModel = viewModel,
-                        scanExclusions = appPrefs.scanExclusions()
+                        scanExclusions = appPrefs.scanExclusions(),
+                        searchFocusRequester = searchFocusRequester
                     )
 
                     Spacer(modifier = Modifier.height(Dimens.SpacingLarge))
@@ -199,7 +216,7 @@ fun App(
                                     Box(modifier = Modifier.weight(weights.treeWeight).fillMaxHeight().border(Dimens.BorderThin, Color.DarkGray)) {
                                         FileTreeView(
                                             stableRoot = stableRoot,
-                                            selectedPaths = selectedPaths,
+                                            uiState = uiState,
                                             selectionAnchor = selectionAnchor,
                                             customColors = fileColors,
                                             onSelect = onSelectMulti,
@@ -223,6 +240,7 @@ fun App(
                                             index = uiState.index(),
                                             selectedPaths = selectedPaths,
                                             highlightedExtension = highlightedExtension,
+                                            searchQuery = uiState.searchQuery(),
                                             customColors = fileColors,
                                             isResizing = resizingSide != ResizingSide.NONE,
                                             onSelect = onTreemapSelect,

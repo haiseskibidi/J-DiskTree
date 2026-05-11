@@ -1,11 +1,11 @@
 package com.jdisktree.ui
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Button
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Text
-import androidx.compose.material.TextField
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -15,13 +15,19 @@ import com.jdisktree.viewmodel.ScanViewModel
 import com.jdisktree.domain.ScanExclusion
 import java.nio.file.Paths
 
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.*
+
 @Composable
 fun Toolbar(
     uiState: UiState,
     pathText: String,
     onPathChange: (String) -> Unit,
     viewModel: ScanViewModel,
-    scanExclusions: List<ScanExclusion>
+    scanExclusions: List<ScanExclusion>,
+    searchFocusRequester: FocusRequester = remember { FocusRequester() }
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -35,7 +41,27 @@ fun Toolbar(
             label = { Text(stringResource("prop_path")) },
             singleLine = true
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        
+        Spacer(modifier = Modifier.width(Dimens.SpacingMedium))
+
+        // Search Field
+        OutlinedTextField(
+            value = uiState.searchQuery(),
+            onValueChange = { viewModel.setSearchQuery(it) },
+            modifier = Modifier
+                .width(250.dp)
+                .focusRequester(searchFocusRequester),
+            placeholder = { Text(stringResource("search_placeholder"), style = MaterialTheme.typography.body2) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(Dimens.IconSmall)) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.body2,
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.3f)
+            )
+        )
+
+        Spacer(modifier = Modifier.width(Dimens.SpacingMedium))
+
         OutlinedButton(
             onClick = {
                 DirectoryPicker.pickDirectory()?.let { onPathChange(it) }
