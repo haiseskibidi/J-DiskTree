@@ -1,4 +1,4 @@
-# Project State: J-DiskTree
+# Project State: J-DiskTree (v1.4.0)
 
 ## Phase 9: Extreme High-Performance Engine Redesign - [COMPLETED]
 - [x] **Parallel I/O Engine:** Replaced single-threaded `Files.walkFileTree` with a custom `ForkJoinPool` architecture implementing "Directory-Granular Parallelism". 
@@ -42,6 +42,12 @@
 - [x] **v1.3.0 Milestone:** Finalized localization and distribution packaging for the major 1.3.0 release.
 - [x] **Export Engine:** Implemented background-safe CSV (flat list) and JSON (hierarchical) report generation. CSV includes UTF-8 BOM for perfect Windows/Excel compatibility.
 
-## Summary
-J-DiskTree is now a production-ready, high-performance disk space analyzer. It features a world-class parallel scanning engine, an intelligent real-time search system with background rendering, and a robust reporting system. The application supports advanced multi-selection, bi-directional synchronization, and liquid-smooth GPU-accelerated graphics. Fully packaged for Windows with persistent user settings, CSV/JSON export capabilities, and comprehensive localization support.
+## Phase 16: Age Analysis & Snapshot Comparison (Release v1.4.0) - [COMPLETED]
+- [x] **Age Analysis Engine:** Implemented "lastModified" scanning and a professional interactive filter UI. Files are visually dimmed or highlighted based on their age.
+- [x] **Snapshot Recursive Diff:** Engineered a multi-threaded recursive comparison engine using `RecursiveTask` to detect ADDED, REMOVED, and MODIFIED files between snapshots.
+- [x] **Differential Visualization:** Integrated an "X-ray" diff mode on the Treemap and a color-coded tree view with size deltas (e.g., -1.5 GB).
+- [x] **State Persistence:** UI now persists folder expansion state across scans and mode switches, ensuring a seamless analysis experience.
+- [x] **v1.4.0 Milestone:** Reached a new level of disk forensics capability.
 
+## Summary
+J-DiskTree is now a production-ready, high-performance disk space analyzer and forensics tool. It features a world-class parallel scanning engine, a recursive snapshot comparison system, and an intelligent real-time search with background rendering. The application supports advanced multi-selection, bi-directional synchronization, and liquid-smooth GPU-accelerated graphics. Fully packaged for Windows with persistent user settings, CSV/JSON export capabilities, and comprehensive localization support.

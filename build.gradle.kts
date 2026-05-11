@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.jdisktree"
-version = "1.3.0"
+version = "1.4.0"
 
 repositories {
     google()
@@ -28,10 +28,10 @@ compose.desktop {
         nativeDistributions {
             targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi)
             packageName = "J-DiskTree"
-            packageVersion = "1.3.0"
+            packageVersion = "1.4.0"
             vendor = "J-DiskTree Team"
             description = "High-performance disk space analyzer"
-            
+
             windows {
                 shortcut = true // Create desktop shortcut
                 menu = true     // Create Start Menu entry
@@ -53,8 +53,8 @@ tasks.register<Zip>("packagePortableZip") {
     // Ensure we create the distributable first
     dependsOn("createReleaseDistributable")
 
-    val appName = "J-DiskTree" 
-    
+    val appName = "J-DiskTree"
+
     // Pick everything from the App Image folder
     from(layout.buildDirectory.dir("compose/binaries/main-release/app/$appName"))
 
