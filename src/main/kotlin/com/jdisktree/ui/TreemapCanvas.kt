@@ -30,7 +30,7 @@ fun TreemapCanvas(
     customColors: List<FileColorConfig> = emptyList(),
     baseWidth: Double,
     baseHeight: Double,
-    isResizing: Boolean = false, // Controlled by parent for optimization
+    isResizing: Boolean = false,
     onHover: (TreeMapRect?, Offset) -> Unit,
     onClick: (String) -> Unit,
     onSecondaryClick: (String, Offset) -> Unit
@@ -38,15 +38,19 @@ fun TreemapCanvas(
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     var currentHover by remember { mutableStateOf<TreeMapRect?>(null) }
 
-    // SECRET WEAPON: We only re-draw the million rectangles if NOT resizing.
-    // If resizing, we use the last stable bitmap and scale it via GPU.
-    val treemapBitmap = remember(rects, highlightedExtension, customColors, if (isResizing) null else canvasSize) {
-        if (canvasSize.width <= 0 || canvasSize.height <= 0 || rects.isEmpty()) null
+    // STABLE BITMAP: Render at fixed resolution (1000x1000) only when data changes.
+    // This eliminates the 1-second freeze because we NEVER re-render during resize.
+    val treemapBitmap = remember(rects, highlightedExtension, customColors) {
+        if (rects.isEmpty()) null
         else {
-            val bitmap = ImageBitmap(canvasSize.width, canvasSize.height)
+            val internalW = 1000
+            val internalH = 1000
+            val bitmap = ImageBitmap(internalW, internalH)
             val canvas = Canvas(bitmap)
-            val scaleX = canvasSize.width.toFloat() / baseWidth.toFloat()
-            val scaleY = canvasSize.height.toFloat() / baseHeight.toFloat()
+            
+            // We draw in 1:1 scale relative to baseWidth/baseHeight (which are 1000.0)
+            val scaleX = internalW.toFloat() / baseWidth.toFloat()
+            val scaleY = internalH.toFloat() / baseHeight.toFloat()
 
             val dirPaint = Paint().apply { color = Color(0xFF242424) }
             rects.forEach { rect ->
