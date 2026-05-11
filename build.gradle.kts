@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.jdisktree"
-version = "1.1.0"
+version = "1.1.1"
 
 repositories {
     google()
@@ -26,7 +26,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi)
             packageName = "J-DiskTree"
-            packageVersion = "1.1.0"
+            packageVersion = "1.1.1"
             vendor = "J-DiskTree Team"
             description = "High-performance disk space analyzer"
             
