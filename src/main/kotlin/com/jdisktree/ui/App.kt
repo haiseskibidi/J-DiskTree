@@ -260,25 +260,6 @@ fun App(
                                 Text(stringResource("idle_prompt"))
                             }
                         }
-
-                        // Global Context Menu
-                        if (contextMenuPaths.isNotEmpty()) {
-                            val density = LocalDensity.current
-                            val offsetX = with(density) { contextMenuOffset.x.toDp() }
-                            val offsetY = with(density) { contextMenuOffset.y.toDp() }
-
-                            Box(modifier = Modifier.offset(offsetX, offsetY)) {
-                                FileContextMenu(
-                                    paths = contextMenuPaths,
-                                    onDismiss = { contextMenuPaths = emptySet() },
-                                    onOpenExplorer = { path -> viewModel.openInExplorer(path) },
-                                    onCopyPath = { path -> viewModel.copyPath(path) },
-                                    onMoveToTrash = { paths -> viewModel.moveSelectedToTrash(paths, 1000.0, 1000.0) },
-                                    onDeletePermanently = { paths -> showDeleteConfirm = paths },
-                                    onShowProperties = { path -> showProperties = path }
-                                )
-                            }
-                        }
                     }
                 }
             }
@@ -314,6 +295,25 @@ fun App(
                     showSettings = false
                 }
             )
+        }
+
+        // Global Context Menu (At top level for correct absolute positioning)
+        if (contextMenuPaths.isNotEmpty()) {
+            val density = LocalDensity.current
+            val offsetX = with(density) { contextMenuOffset.x.toDp() }
+            val offsetY = with(density) { contextMenuOffset.y.toDp() }
+
+            Box(modifier = Modifier.offset(offsetX, offsetY)) {
+                FileContextMenu(
+                    paths = contextMenuPaths,
+                    onDismiss = { contextMenuPaths = emptySet() },
+                    onOpenExplorer = { path -> viewModel.openInExplorer(path) },
+                    onCopyPath = { path -> viewModel.copyPath(path) },
+                    onMoveToTrash = { paths -> viewModel.moveSelectedToTrash(paths, 1000.0, 1000.0) },
+                    onDeletePermanently = { paths -> showDeleteConfirm = paths },
+                    onShowProperties = { path -> showProperties = path }
+                )
+            }
         }
     }
 }

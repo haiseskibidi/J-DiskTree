@@ -16,6 +16,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondaryPressed
@@ -90,35 +92,16 @@ fun FileTreeView(
 
     val listState = rememberLazyListState()
 
-    // Smart Scroll: only for single selection
+    // Simple Centered Scroll: Always put the selected file in the middle
     LaunchedEffect(selectedPaths, flatNodes) {
         if (selectedPaths.size == 1) {
             val path = selectedPaths.first()
             val fileIndex = flatNodes.indexOfFirst { node -> node.fileNode.absolutePath() == path }
             if (fileIndex >= 0) {
-                val rootNioPath = Paths.get(rootNode.absolutePath())
-                var currentPath = Paths.get(path)
-                var rootPlusOnePath = path
-
-                while (currentPath != null && currentPath != rootNioPath) {
-                    val parent = currentPath.parent
-                    if (parent == rootNioPath) {
-                        rootPlusOnePath = currentPath.toAbsolutePath().toString()
-                        break
-                    }
-                    currentPath = parent
-                }
-
-                val rootPlusOneIndex = flatNodes.indexOfFirst { node -> node.fileNode.absolutePath() == rootPlusOnePath }
-                val viewportThreshold = 20 
-                val bufferOffset = 3
-
-                val targetIndex = if (rootPlusOneIndex >= 0 && (fileIndex - rootPlusOneIndex) < viewportThreshold) {
-                    rootPlusOneIndex
-                } else {
-                    (fileIndex - bufferOffset).coerceAtLeast(0)
-                }
+                val layoutInfo = listState.layoutInfo
+                val visibleItemsCount = layoutInfo.visibleItemsInfo.size.takeIf { it > 0 } ?: 20
                 
+                val targetIndex = (fileIndex - (visibleItemsCount / 2)).coerceAtLeast(0)
                 listState.animateScrollToItem(targetIndex)
             }
         }
@@ -129,6 +112,7 @@ fun FileTreeView(
             items(flatNodes, key = { node -> node.fileNode.absolutePath() }) { flatNode ->
                 val node = flatNode.fileNode
                 val isSelected = selectedPaths.contains(node.absolutePath())
+                var rowPosition by remember { mutableStateOf(Offset.Zero) }
 
                 Row(
                     modifier = Modifier
@@ -136,6 +120,7 @@ fun FileTreeView(
                         .padding(vertical = 1.dp)
                         .clip(RoundedCornerShape(Dimens.RadiusMedium))
                         .background(if (isSelected) AppColors.SelectionGreen.copy(alpha = 0.4f) else Color.Transparent)
+                        .onGloballyPositioned { rowPosition = it.positionInWindow() }
                         .onPointerEvent(PointerEventType.Press) { event ->
                             val change = event.changes.first()
                             if (change.pressed) {
@@ -143,8 +128,16 @@ fun FileTreeView(
                                 val isShift = event.keyboardModifiers.isShiftPressed
                                 
                                 if (event.buttons.isSecondaryPressed) {
-                                    val finalSelection = if (isSelected) selectedPaths else setOf(node.absolutePath())
-                                    onSecondaryClick(finalSelection, change.position)
+                                    val finalSelection = if (isSelected) {
+                                        selectedPaths
+                                    } else {
+                                        // If right-clicked on an unselected item, select ONLY it (standard OS behavior)
+                                        val singleSet = setOf(node.absolutePath())
+                                        onSelect(node.absolutePath(), false, false, allVisiblePaths)
+                                        singleSet
+                                    }
+                                    // Use absolute window coordinates for the context menu
+                                    onSecondaryClick(finalSelection, rowPosition + change.position)
                                 } else {
                                     if (node.isDirectory && !isCtrl && !isShift) {
                                         expandedPaths = if (flatNode.isExpanded) {

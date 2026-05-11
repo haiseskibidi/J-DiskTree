@@ -14,6 +14,8 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import com.jdisktree.domain.TreeMapRect
@@ -38,6 +40,7 @@ fun TreemapCanvas(
 ) {
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     var currentHover by remember { mutableStateOf<TreeMapRect?>(null) }
+    var canvasPosition by remember { mutableStateOf(Offset.Zero) }
     
     // (Bitmap logic remains same, but using updated parameters if needed)
     val treemapBitmap = remember(rects, highlightedExtension, customColors) {
@@ -106,6 +109,7 @@ fun TreemapCanvas(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF1E1E1E))
+            .onGloballyPositioned { canvasPosition = it.positionInWindow() }
             .onSizeChanged { canvasSize = it }
             .onPointerEvent(PointerEventType.Move) { event ->
                 if (isResizing) return@onPointerEvent 
@@ -132,8 +136,16 @@ fun TreemapCanvas(
                 if (change.pressed) {
                     currentHover?.let { rect ->
                         if (event.buttons.isSecondaryPressed) {
-                            val finalSelection = if (selectedPaths.contains(rect.path())) selectedPaths else setOf(rect.path())
-                            onSecondaryClick(finalSelection, change.position)
+                            val isAlreadySelected = selectedPaths.contains(rect.path())
+                            val finalSelection = if (isAlreadySelected) {
+                                selectedPaths
+                            } else {
+                                // Select only this item if it wasn't part of selection
+                                onClick(rect.path(), false)
+                                setOf(rect.path())
+                            }
+                            // Use absolute window coordinates
+                            onSecondaryClick(finalSelection, canvasPosition + change.position)
                         } else {
                             onClick(rect.path(), event.keyboardModifiers.isCtrlPressed)
                         }

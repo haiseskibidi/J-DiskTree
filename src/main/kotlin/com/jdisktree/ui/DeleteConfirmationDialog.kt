@@ -14,12 +14,18 @@ fun DeleteConfirmationDialog(
     val message = if (paths.size == 1) {
         stringResource("delete_confirm_text", paths.first())
     } else {
+        stringResource("delete_multi_confirm_text", paths.size)
+    }
+
+    val title = if (paths.size == 1) {
+        stringResource("delete_confirm_title")
+    } else {
         "${stringResource("delete_confirm_title")} (${paths.size} ${stringResource("prop_files")})"
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource("delete_confirm_title")) },
+        title = { Text(title) },
         text = { Text(message) },
         confirmButton = {
             Button(
