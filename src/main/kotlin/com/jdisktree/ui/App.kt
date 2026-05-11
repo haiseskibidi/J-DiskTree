@@ -14,6 +14,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.key.*
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import com.jdisktree.domain.TreeMapRect
 import com.jdisktree.state.ScanStatus
 import com.jdisktree.state.UiState
@@ -65,38 +67,44 @@ fun App(
     // --- STABLE CALLBACKS ---
     val onWeightsChangeState = rememberUpdatedState(onWeightsChange)
     
-    val onSelectMulti = remember { { path: String, isCtrl: Boolean, isShift: Boolean, visiblePaths: List<String> ->
+    val onSelectMulti = remember { { path: String?, isCtrl: Boolean, isShift: Boolean, visiblePaths: List<String> ->
         val currentSelection = uiState.selectedPaths().toMutableSet()
         
-        when {
-            isShift && selectionAnchor != null -> {
-                val anchorIdx = visiblePaths.indexOf(selectionAnchor)
-                val currentIdx = visiblePaths.indexOf(path)
-                if (anchorIdx != -1 && currentIdx != -1) {
-                    val start = minOf(anchorIdx, currentIdx)
-                    val end = maxOf(anchorIdx, currentIdx)
-                    val range = visiblePaths.subList(start, end + 1)
-                    if (!isCtrl) currentSelection.clear()
-                    currentSelection.addAll(range)
+        if (path == null) {
+            currentSelection.clear()
+        } else {
+            when {
+                isShift && selectionAnchor != null -> {
+                    val anchorIdx = visiblePaths.indexOf(selectionAnchor)
+                    val currentIdx = visiblePaths.indexOf(path)
+                    if (anchorIdx != -1 && currentIdx != -1) {
+                        val start = minOf(anchorIdx, currentIdx)
+                        val end = maxOf(anchorIdx, currentIdx)
+                        val range = visiblePaths.subList(start, end + 1)
+                        if (!isCtrl) currentSelection.clear()
+                        currentSelection.addAll(range)
+                    }
                 }
-            }
-            isCtrl -> {
-                if (currentSelection.contains(path)) currentSelection.remove(path)
-                else currentSelection.add(path)
-            }
-            else -> {
-                currentSelection.clear()
-                currentSelection.add(path)
+                isCtrl -> {
+                    if (currentSelection.contains(path)) currentSelection.remove(path)
+                    else currentSelection.add(path)
+                }
+                else -> {
+                    currentSelection.clear()
+                    currentSelection.add(path)
+                }
             }
         }
         
         viewModel.setSelectedPaths(currentSelection)
-        selectionAnchor = path
+        if (path != null) selectionAnchor = path
     } }
 
-    val onTreemapSelect = remember { { path: String, isCtrl: Boolean ->
+    val onTreemapSelect = remember { { path: String?, isCtrl: Boolean ->
         val currentSelection = uiState.selectedPaths().toMutableSet()
-        if (isCtrl) {
+        if (path == null) {
+            currentSelection.clear()
+        } else if (isCtrl) {
             if (currentSelection.contains(path)) currentSelection.remove(path)
             else currentSelection.add(path)
         } else {
@@ -104,7 +112,7 @@ fun App(
             currentSelection.add(path)
         }
         viewModel.setSelectedPaths(currentSelection)
-        selectionAnchor = path
+        if (path != null) selectionAnchor = path
     } }
 
     val onSecondaryClickMulti = remember { { paths: Set<String>, offset: Offset ->
@@ -152,6 +160,11 @@ fun App(
                         true
                     } else {
                         false
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        onSelectMulti(null, false, false, emptyList())
                     }
                 },
             color = MaterialTheme.colors.background

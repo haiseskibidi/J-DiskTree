@@ -19,7 +19,7 @@ fun TreemapWithTooltip(
     searchQuery: String = "",
     customColors: List<FileColorConfig> = emptyList(),
     isResizing: Boolean = false,
-    onSelect: (String, Boolean) -> Unit, // path, isCtrl
+    onSelect: (String?, Boolean) -> Unit, // path, isCtrl
     onSecondaryClick: (Set<String>, Offset) -> Unit
 ) {
     var hoveredRect by remember { mutableStateOf<TreeMapRect?>(null) }

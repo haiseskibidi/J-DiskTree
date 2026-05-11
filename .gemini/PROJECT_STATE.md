@@ -34,15 +34,13 @@
 - [x] **Single Source of Truth:** Migrated all preferences (Exclusions & Colors) to structured JSON storage (`settings.json`, `colors.json`) via **Gson**, ensuring a robust configuration layer.
 
 ## Phase 15: Interactive Selection & UX Mastery (Release v1.2.0) - [COMPLETED]
-- [x] **Multi-Selection Logic:** Implemented a robust `Set<String>` based selection system in the core state.
-- [x] **Range Selection (Shift):** Added intelligent range selection in `FileTreeView`. It calculates ranges based on visible paths between a selection "anchor" and the clicked item, mimicking native OS behavior.
-- [x] **Visualization Interaction:** Updated `TreemapCanvas` to support multi-select via `Ctrl+Click` and added high-visibility white border highlighting for all selected items.
-- [x] **Batch Operations:** Refactored context menus and deletion dialogs to handle multiple files. Actions like "Delete permanently" now show the item count and apply to the entire selection.
-- [x] **Batch Pruning:** Optimized the domain layer to perform recursive "batch pruning" in a single pass, keeping the UI instantly in sync with mass deletions on disk.
-- [x] **Liquid Smooth Resize:** Eliminated all resize lag and "1-second freezes" by switching to a **GPU-accelerated fixed-size bitmap buffer (1000x1000)**. The Treemap is now only re-rendered when data changes, while window resizing uses instant GPU scaling.
-- [x] **UX Polishing:** Implemented "Select on Right-Click" and centered auto-scroll logic for a professional desktop experience.
+- [x] **Intelligent Search Engine:** Implemented real-time "X-ray" search. Matches are highlighted on the Treemap while non-matches are dimmed. Added background rendering with a 60ms debounce to ensure perfectly fluid typing.
+- [x] **Multi-Selection Logic:** Implemented a robust `Set<String>` based selection system in the core state with Shift/Ctrl support.
+- [x] **Smart Synchronization:** Tree view automatically expands and centers any item selected on the Treemap. Clicking empty space in either view now clears the selection.
+- [x] **Liquid Smooth Resize:** Eliminated all resize lag by switching to a **GPU-accelerated fixed-size bitmap buffer (1000x1000)**. 
+- [x] **UX Polishing:** Implemented "Select on Right-Click", `Ctrl+F` shortcut support, and professional white border highlights.
 - [x] **v1.2.0 Milestone:** Finalized localization and distribution packaging for the major 1.2.0 release.
 
 ## Summary
-J-DiskTree is now a production-ready, high-performance disk space analyzer. It features a world-class parallel scanning engine with cycle protection, a modern modular UI with bi-directional synchronization, and advanced multi-selection capabilities for bulk file management. The application is highly optimized for performance, featuring liquid-smooth UI interactions and a GPU-accelerated rendering pipeline. Fully packaged for Windows with persistent user settings and localization support.
+J-DiskTree is now a production-ready, high-performance disk space analyzer. It features a world-class parallel scanning engine, an intelligent real-time search system with background rendering, and a modern modular UI. The application supports advanced multi-selection, bi-directional synchronization, and liquid-smooth GPU-accelerated graphics. Fully packaged for Windows with persistent user settings and localization support.
 

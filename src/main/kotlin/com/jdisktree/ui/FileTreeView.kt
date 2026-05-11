@@ -27,8 +27,9 @@ import androidx.compose.ui.input.pointer.isShiftPressed
 import com.jdisktree.domain.FileNode
 import com.jdisktree.state.UiState
 import java.nio.file.Paths
-
 import com.jdisktree.domain.FileColorConfig
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 
 data class FlatNode(
     val fileNode: FileNode,
@@ -43,7 +44,7 @@ fun FileTreeView(
     uiState: UiState,
     selectionAnchor: String?,
     customColors: List<FileColorConfig> = emptyList(),
-    onSelect: (String, Boolean, Boolean, List<String>) -> Unit, // path, isCtrl, isShift, allVisiblePaths
+    onSelect: (String?, Boolean, Boolean, List<String>) -> Unit, // path, isCtrl, isShift, allVisiblePaths
     onSecondaryClick: (Set<String>, Offset) -> Unit
 ) {
     val rootNode = stableRoot.root
@@ -90,7 +91,7 @@ fun FileTreeView(
         result
     }
     
-    val allVisiblePaths = remember(flatNodes) { flatNodes.map { it.fileNode.absolutePath() } }
+    val allVisiblePaths = remember(flatNodes) { flatNodes.map { node: FlatNode -> node.fileNode.absolutePath() } }
 
     val listState = rememberLazyListState()
 
@@ -98,7 +99,7 @@ fun FileTreeView(
     LaunchedEffect(selectedPaths, flatNodes) {
         if (selectedPaths.size == 1) {
             val path = selectedPaths.first()
-            val fileIndex = flatNodes.indexOfFirst { node -> node.fileNode.absolutePath() == path }
+            val fileIndex = flatNodes.indexOfFirst { node: FlatNode -> node.fileNode.absolutePath() == path }
             if (fileIndex >= 0) {
                 val layoutInfo = listState.layoutInfo
                 val visibleItemsCount = layoutInfo.visibleItemsInfo.size.takeIf { it > 0 } ?: 20
@@ -109,8 +110,20 @@ fun FileTreeView(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(end = 12.dp)) {
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        LazyColumn(
+            state = listState, 
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(end = 12.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        onSelect(null, false, false, allVisiblePaths)
+                    }
+                }
+        ) {
             items(flatNodes, key = { node -> node.fileNode.absolutePath() }) { flatNode ->
                 val node = flatNode.fileNode
                 val isSelected = selectedPaths.contains(node.absolutePath())
@@ -133,12 +146,9 @@ fun FileTreeView(
                                     val finalSelection = if (isSelected) {
                                         selectedPaths
                                     } else {
-                                        // If right-clicked on an unselected item, select ONLY it (standard OS behavior)
-                                        val singleSet = setOf(node.absolutePath())
                                         onSelect(node.absolutePath(), false, false, allVisiblePaths)
-                                        singleSet
+                                        setOf(node.absolutePath())
                                     }
-                                    // Use absolute window coordinates for the context menu
                                     onSecondaryClick(finalSelection, rowPosition + change.position)
                                 } else {
                                     if (node.isDirectory && !isCtrl && !isShift) {
@@ -150,6 +160,7 @@ fun FileTreeView(
                                     }
                                     onSelect(node.absolutePath(), isCtrl, isShift, allVisiblePaths)
                                 }
+                                change.consume() // CONSUME EVENT
                             }
                         }
                         .padding(start = (flatNode.level * 16 + 4).dp, top = 4.dp, bottom = 4.dp, end = 4.dp),

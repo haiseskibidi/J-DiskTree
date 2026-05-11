@@ -36,17 +36,26 @@ fun TreemapCanvas(
     baseHeight: Double,
     isResizing: Boolean = false,
     onHover: (TreeMapRect?, Offset) -> Unit,
-    onClick: (String, Boolean) -> Unit, // path, isCtrl
+    onClick: (String?, Boolean) -> Unit, // path, isCtrl
     onSecondaryClick: (Set<String>, Offset) -> Unit
 ) {
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     var currentHover by remember { mutableStateOf<TreeMapRect?>(null) }
     var canvasPosition by remember { mutableStateOf(Offset.Zero) }
     
-    // Bitmap generation logic
-    val treemapBitmap = remember(rects, highlightedExtension, searchQuery, customColors) {
-        if (rects.isEmpty()) null
-        else {
+    // Background Bitmap generation logic with debouncing
+    val treemapBitmap by produceState<ImageBitmap?>(initialValue = null, rects, highlightedExtension, searchQuery, customColors) {
+        if (rects.isEmpty()) {
+            value = null
+            return@produceState
+        }
+
+        // Debounce search input to keep UI responsive
+        if (searchQuery.isNotBlank()) {
+            kotlinx.coroutines.delay(60)
+        }
+
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
             val internalW = 1000
             val internalH = 1000
             val bitmap = ImageBitmap(internalW, internalH)
@@ -139,22 +148,25 @@ fun TreemapCanvas(
             .onPointerEvent(PointerEventType.Press) { event ->
                 val change = event.changes.first()
                 if (change.pressed) {
-                    currentHover?.let { rect ->
-                        if (event.buttons.isSecondaryPressed) {
-                            val isAlreadySelected = selectedPaths.contains(rect.path())
-                            val finalSelection = if (isAlreadySelected) {
-                                selectedPaths
+                    if (currentHover == null) {
+                        onClick(null, false)
+                    } else {
+                        currentHover?.let { rect ->
+                            if (event.buttons.isSecondaryPressed) {
+                                val isAlreadySelected = selectedPaths.contains(rect.path())
+                                val finalSelection = if (isAlreadySelected) {
+                                    selectedPaths
+                                } else {
+                                    onClick(rect.path(), false)
+                                    setOf(rect.path())
+                                }
+                                onSecondaryClick(finalSelection, canvasPosition + change.position)
                             } else {
-                                // Select only this item if it wasn't part of selection
-                                onClick(rect.path(), false)
-                                setOf(rect.path())
+                                onClick(rect.path(), event.keyboardModifiers.isCtrlPressed)
                             }
-                            // Use absolute window coordinates
-                            onSecondaryClick(finalSelection, canvasPosition + change.position)
-                        } else {
-                            onClick(rect.path(), event.keyboardModifiers.isCtrlPressed)
                         }
                     }
+                    change.consume()
                 }
             }
     ) {
