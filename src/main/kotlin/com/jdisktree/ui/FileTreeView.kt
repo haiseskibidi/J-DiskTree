@@ -56,7 +56,6 @@ fun FileTreeView(
     }
 
     var expandedPaths by remember { mutableStateOf(setOf(rootNode.absolutePath())) }
-    val searchQuery = uiState.searchQuery()
 
     // Auto-expand when a single new path is selected (e.g. from treemap)
     LaunchedEffect(selectedPaths) {
@@ -73,48 +72,11 @@ fun FileTreeView(
         }
     }
 
-    fun hasMatchingDescendantRecursive(node: FileNode, query: String): Boolean {
-        return node.children().any { child ->
-            child.name().contains(query, ignoreCase = true) || 
-            (child.isDirectory && hasMatchingDescendantRecursive(child, query))
-        }
-    }
-
-    // Auto-expand on search
-    LaunchedEffect(searchQuery) {
-        if (searchQuery.isNotBlank()) {
-            val newExpanded = expandedPaths.toMutableSet()
-            fun expandMatching(node: FileNode) {
-                if (node.isDirectory) {
-                    val nameMatches = node.name().contains(searchQuery, ignoreCase = true)
-                    val hasMatchingDescendant = hasMatchingDescendantRecursive(node, searchQuery)
-                    if (nameMatches || hasMatchingDescendant) {
-                        newExpanded.add(node.absolutePath())
-                        node.children().forEach { expandMatching(it) }
-                    }
-                }
-            }
-            expandMatching(rootNode)
-            expandedPaths = newExpanded
-        }
-    }
-
-    // Flatten the tree for LazyColumn with filtering
-    val flatNodes = remember(rootNode, expandedPaths, searchQuery) {
+    // Flatten the tree for LazyColumn
+    val flatNodes = remember(rootNode, expandedPaths) {
         val result = mutableListOf<FlatNode>()
         
-        fun matchesSearch(node: FileNode): Boolean {
-            if (searchQuery.isBlank()) return true
-            if (node.name().contains(searchQuery, ignoreCase = true)) return true
-            if (node.isDirectory) {
-                return hasMatchingDescendantRecursive(node, searchQuery)
-            }
-            return false
-        }
-
         fun traverse(node: FileNode, level: Int) {
-            if (!matchesSearch(node)) return
-
             val isExpanded = expandedPaths.contains(node.absolutePath())
             result.add(FlatNode(node, level, isExpanded))
 
