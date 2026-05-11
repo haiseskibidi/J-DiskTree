@@ -33,5 +33,14 @@
 - [x] **Dark-Themed Color Picker:** Integrated **FlatLaf** library to provide a beautiful, theme-aware native `JColorChooser` with HSV as the default tab.
 - [x] **Single Source of Truth:** Migrated all preferences (Exclusions & Colors) to structured JSON storage (`settings.json`, `colors.json`) via **Gson**, ensuring a robust configuration layer.
 
+## Phase 15: Interactive Selection & UX Mastery - [COMPLETED]
+- [x] **Multi-Selection Logic:** Implemented a robust `Set<String>` based selection system in the core state.
+- [x] **Range Selection (Shift):** Added intelligent range selection in `FileTreeView`. It calculates ranges based on visible paths between a selection "anchor" and the clicked item, mimicking native OS behavior.
+- [x] **Visualization Interaction:** Updated `TreemapCanvas` to support multi-select via `Ctrl+Click` and added high-visibility white border highlighting for all selected items.
+- [x] **Batch Operations:** Refactored context menus and deletion dialogs to handle multiple files. Actions like "Delete permanently" now show the item count and apply to the entire selection.
+- [x] **Batch Pruning:** Optimized the domain layer to perform recursive "batch pruning" in a single pass, keeping the UI instantly in sync with mass deletions on disk.
+- [x] **Liquid Smooth Resize:** Eliminated all resize lag and "1-second freezes" by switching to a **GPU-accelerated fixed-size bitmap buffer (1000x1000)**. The Treemap is now only re-rendered when data changes, while window resizing uses instant GPU scaling.
+
 ## Summary
-J-DiskTree is now a production-ready disk space analyzer. It features a world-class parallel scanning engine with cycle protection, a modern modular UI with bi-directional synchronization, and full support for file management and localization. The application is fully packaged for Windows with automatic shortcuts and persistent user settings.
+J-DiskTree is now a production-ready, high-performance disk space analyzer. It features a world-class parallel scanning engine with cycle protection, a modern modular UI with bi-directional synchronization, and advanced multi-selection capabilities for bulk file management. The application is highly optimized for performance, featuring liquid-smooth UI interactions and a GPU-accelerated rendering pipeline. Fully packaged for Windows with persistent user settings and localization support.
+
