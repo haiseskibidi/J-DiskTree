@@ -30,6 +30,7 @@ public class ScanViewModel {
 
     private final TreemapService treemapService = new TreemapService();
     private final FileOperationsService fileOps = new FileOperationsService();
+    private final com.jdisktree.scanner.ExportService exportService = new com.jdisktree.scanner.ExportService();
     private final Consumer<UiState> stateObserver;
     private volatile UiState currentState = UiState.idle();
     private long lastProgressUpdate = 0;
@@ -37,6 +38,24 @@ public class ScanViewModel {
     public ScanViewModel(Consumer<UiState> stateObserver) {
         this.stateObserver = stateObserver;
         emitState(currentState);
+    }
+
+    public void exportData(String format, java.io.File targetFile) {
+        FileNode root = currentState.rootNode();
+        if (root == null) return;
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                if ("CSV".equalsIgnoreCase(format)) {
+                    exportService.exportToCsv(root, targetFile.toPath());
+                } else if ("JSON".equalsIgnoreCase(format)) {
+                    exportService.exportToJson(root, targetFile.toPath());
+                }
+            } catch (java.io.IOException e) {
+                updateState(s -> s.withError("Export failed: " + e.getMessage()));
+                e.printStackTrace();
+            }
+        });
     }
 
     public void openInExplorer(String path) {

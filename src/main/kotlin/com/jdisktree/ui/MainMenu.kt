@@ -19,9 +19,11 @@ import java.net.URI
 fun MainMenu(
     isDarkTheme: Boolean,
     showStats: Boolean,
+    hasData: Boolean,
     onThemeToggle: () -> Unit,
     onStatsToggle: () -> Unit,
     onNewScan: () -> Unit,
+    onExport: (String, java.io.File) -> Unit,
     onOpenSettings: () -> Unit,
     onExit: () -> Unit
 ) {
@@ -41,7 +43,45 @@ fun MainMenu(
             ) {
                 Text(strings.get("new_scan"), style = MaterialTheme.typography.body2)
             }
+            
             Divider(color = Color.Gray.copy(alpha = 0.2f))
+
+            // Export Submenu
+            var exportSubMenu by remember { mutableStateOf(false) }
+            DropdownMenuItem(
+                onClick = { if (hasData) exportSubMenu = !exportSubMenu },
+                enabled = hasData,
+                contentPadding = PaddingValues(horizontal = 12.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(strings.get("export_menu"), style = MaterialTheme.typography.body2, color = if (hasData) Color.Unspecified else Color.Gray)
+                    Text(if (exportSubMenu) "▼" else "▶", style = MaterialTheme.typography.caption, color = Color.Gray)
+                }
+            }
+
+            if (exportSubMenu && hasData) {
+                DropdownMenuItem(
+                    onClick = {
+                        pickSaveFile("csv")?.let { file -> onExport("CSV", file) }
+                        expanded.value = false
+                    },
+                    contentPadding = PaddingValues(start = 24.dp, end = 12.dp)
+                ) {
+                    Text(strings.get("export_csv"), style = MaterialTheme.typography.body2)
+                }
+                DropdownMenuItem(
+                    onClick = {
+                        pickSaveFile("json")?.let { file -> onExport("JSON", file) }
+                        expanded.value = false
+                    },
+                    contentPadding = PaddingValues(start = 24.dp, end = 12.dp)
+                ) {
+                    Text(strings.get("export_json"), style = MaterialTheme.typography.body2)
+                }
+            }
+
+            Divider(color = Color.Gray.copy(alpha = 0.2f))
+            
             DropdownMenuItem(onClick = { onExit(); expanded.value = false },
                 contentPadding = PaddingValues(horizontal = 12.dp)
             ) {
@@ -160,4 +200,11 @@ private fun MenuButton(
             }
         }
     }
+}
+
+private fun pickSaveFile(extension: String): java.io.File? {
+    val dialog = java.awt.FileDialog(null as java.awt.Frame?, "Save Report", java.awt.FileDialog.SAVE)
+    dialog.file = "report.$extension"
+    dialog.isVisible = true
+    return if (dialog.file != null) java.io.File(dialog.directory, dialog.file) else null
 }

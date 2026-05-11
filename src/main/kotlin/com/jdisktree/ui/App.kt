@@ -174,6 +174,7 @@ fun App(
                 MainMenu(
                     isDarkTheme = isDarkTheme,
                     showStats = showTypeStats,
+                    hasData = uiState.rootNode() != null,
                     onThemeToggle = onThemeToggle,
                     onStatsToggle = { 
                         showTypeStats = !showTypeStats
@@ -182,6 +183,7 @@ fun App(
                     onNewScan = { 
                         DirectoryPicker.pickDirectory()?.let { pickedPath -> pathText = pickedPath }
                     },
+                    onExport = { format, file -> viewModel.exportData(format, file) },
                     onOpenSettings = { showSettings = true },
                     onExit = onExit
                 )
