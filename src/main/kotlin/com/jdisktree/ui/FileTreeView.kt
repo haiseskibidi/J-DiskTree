@@ -20,6 +20,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isShiftPressed
 import com.jdisktree.domain.FileNode
 import java.nio.file.Paths
 
@@ -35,10 +37,11 @@ data class FlatNode(
 @Composable
 fun FileTreeView(
     stableRoot: StableFileTree,
-    selectedPath: String?,
+    selectedPaths: Set<String>,
+    selectionAnchor: String?,
     customColors: List<FileColorConfig> = emptyList(),
-    onSelect: (String) -> Unit,
-    onSecondaryClick: (String, Offset) -> Unit
+    onSelect: (String, Boolean, Boolean, List<String>) -> Unit, // path, isCtrl, isShift, allVisiblePaths
+    onSecondaryClick: (Set<String>, Offset) -> Unit
 ) {
     val rootNode = stableRoot.root
     if (rootNode == null) {
@@ -50,15 +53,17 @@ fun FileTreeView(
 
     var expandedPaths by remember { mutableStateOf(setOf(rootNode.absolutePath())) }
 
-    // Auto-expand when selectedPath changes
-    LaunchedEffect(selectedPath) {
-        if (selectedPath != null) {
+    // Auto-expand when a single new path is selected (e.g. from treemap)
+    LaunchedEffect(selectedPaths) {
+        if (selectedPaths.size == 1) {
+            val path = selectedPaths.first()
             val newExpanded = expandedPaths.toMutableSet()
-            var currentPath = Paths.get(selectedPath).parent
+            var currentPath = Paths.get(path).parent
             while (currentPath != null) {
                 val pathStr = currentPath.toAbsolutePath().toString()
-                newExpanded.add(pathStr)
-                currentPath = currentPath.parent
+                if (newExpanded.add(pathStr)) {
+                    currentPath = currentPath.parent
+                } else break
             }
             expandedPaths = newExpanded
         }
@@ -72,7 +77,6 @@ fun FileTreeView(
             result.add(FlatNode(node, level, isExpanded))
 
             if (isExpanded && node.isDirectory) {
-                // Sort children by size descending for a better UX
                 node.children().sortedByDescending { child -> child.size() }.forEach { child ->
                     traverse(child, level + 1)
                 }
@@ -81,19 +85,21 @@ fun FileTreeView(
         traverse(rootNode, 0)
         result
     }
+    
+    val allVisiblePaths = remember(flatNodes) { flatNodes.map { it.fileNode.absolutePath() } }
 
     val listState = rememberLazyListState()
 
-    // Smart Scroll: Intelligently decide where to scroll based on nesting depth
-    LaunchedEffect(selectedPath, flatNodes) {
-        if (selectedPath != null) {
-            val fileIndex = flatNodes.indexOfFirst { node -> node.fileNode.absolutePath() == selectedPath }
+    // Smart Scroll: only for single selection
+    LaunchedEffect(selectedPaths, flatNodes) {
+        if (selectedPaths.size == 1) {
+            val path = selectedPaths.first()
+            val fileIndex = flatNodes.indexOfFirst { node -> node.fileNode.absolutePath() == path }
             if (fileIndex >= 0) {
                 val rootNioPath = Paths.get(rootNode.absolutePath())
-                var currentPath = Paths.get(selectedPath)
-                var rootPlusOnePath = selectedPath
+                var currentPath = Paths.get(path)
+                var rootPlusOnePath = path
 
-                // Find the "Root + 1" folder (macro context)
                 while (currentPath != null && currentPath != rootNioPath) {
                     val parent = currentPath.parent
                     if (parent == rootNioPath) {
@@ -104,19 +110,12 @@ fun FileTreeView(
                 }
 
                 val rootPlusOneIndex = flatNodes.indexOfFirst { node -> node.fileNode.absolutePath() == rootPlusOnePath }
-                
-                // DECISION LOGIC:
-                // If the distance between the top-level folder and the selected file is small (< 20 rows),
-                // scroll to the folder so the user sees the macro context.
-                // If the file is too deep, scroll to the file with a small offset (buffer)
-                // so it's not glued to the very top of the screen.
                 val viewportThreshold = 20 
                 val bufferOffset = 3
 
                 val targetIndex = if (rootPlusOneIndex >= 0 && (fileIndex - rootPlusOneIndex) < viewportThreshold) {
                     rootPlusOneIndex
                 } else {
-                    // Scroll to 3 items above the file for better visual context
                     (fileIndex - bufferOffset).coerceAtLeast(0)
                 }
                 
@@ -129,7 +128,7 @@ fun FileTreeView(
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(end = 12.dp)) {
             items(flatNodes, key = { node -> node.fileNode.absolutePath() }) { flatNode ->
                 val node = flatNode.fileNode
-                val isSelected = node.absolutePath() == selectedPath
+                val isSelected = selectedPaths.contains(node.absolutePath())
 
                 Row(
                     modifier = Modifier
@@ -140,17 +139,21 @@ fun FileTreeView(
                         .onPointerEvent(PointerEventType.Press) { event ->
                             val change = event.changes.first()
                             if (change.pressed) {
+                                val isCtrl = event.keyboardModifiers.isCtrlPressed
+                                val isShift = event.keyboardModifiers.isShiftPressed
+                                
                                 if (event.buttons.isSecondaryPressed) {
-                                    onSecondaryClick(node.absolutePath(), change.position)
+                                    val finalSelection = if (isSelected) selectedPaths else setOf(node.absolutePath())
+                                    onSecondaryClick(finalSelection, change.position)
                                 } else {
-                                    if (node.isDirectory) {
+                                    if (node.isDirectory && !isCtrl && !isShift) {
                                         expandedPaths = if (flatNode.isExpanded) {
                                             expandedPaths - node.absolutePath()
                                         } else {
                                             expandedPaths + node.absolutePath()
                                         }
                                     }
-                                    onSelect(node.absolutePath())
+                                    onSelect(node.absolutePath(), isCtrl, isShift, allVisiblePaths)
                                 }
                             }
                         }

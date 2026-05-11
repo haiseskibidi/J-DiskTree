@@ -12,9 +12,12 @@ import com.jdisktree.treemap.index.SpatialGridIndex;
 import javax.swing.SwingUtilities;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -44,26 +47,41 @@ public class ScanViewModel {
         fileOps.copyToClipboard(path);
     }
 
-    public void moveToTrash(String path, double width, double height) {
+    public void setSelectedPaths(Set<String> paths) {
+        updateState(s -> s.withSelectedPaths(paths));
+    }
+
+    public void moveSelectedToTrash(Collection<String> paths, double width, double height) {
         CompletableFuture.runAsync(() -> {
-            fileOps.moveToTrash(path);
-            // Always prune from UI to ensure the view stays in sync with reality
-            applyPruning(path, width, height);
+            for (String path : paths) {
+                fileOps.moveToTrash(path);
+            }
+            applyBatchPruning(paths, width, height);
         });
+    }
+
+    public void deleteSelectedPermanently(Collection<String> paths, double width, double height) {
+        CompletableFuture.runAsync(() -> {
+            for (String path : paths) {
+                fileOps.deletePermanently(path);
+            }
+            applyBatchPruning(paths, width, height);
+        });
+    }
+
+    public void moveToTrash(String path, double width, double height) {
+        moveSelectedToTrash(Collections.singletonList(path), width, height);
     }
 
     public void deletePermanently(String path, double width, double height) {
-        CompletableFuture.runAsync(() -> {
-            fileOps.deletePermanently(path);
-            applyPruning(path, width, height);
-        });
+        deleteSelectedPermanently(Collections.singletonList(path), width, height);
     }
 
-    private void applyPruning(String targetPath, double width, double height) {
+    private void applyBatchPruning(Collection<String> targetPaths, double width, double height) {
         FileNode currentRoot = currentState.rootNode();
         if (currentRoot == null) return;
 
-        FileNode newRoot = currentRoot.prune(targetPath);
+        FileNode newRoot = currentRoot.prune(targetPaths);
         
         if (newRoot == null) {
             updateState(s -> UiState.idle());
@@ -79,8 +97,16 @@ public class ScanViewModel {
 
         List<FileTypeStat> stats = calculateTypeStats(newRoot);
 
-        // IMPORTANT: We must update the state with the NEW root node so the Tree View reflects changes
-        updateState(s -> s.withRects(rects, index, newRoot, stats));
+        // Clear selection if selected items were pruned
+        updateState(s -> {
+            Set<String> newSelection = new java.util.HashSet<>(s.selectedPaths());
+            newSelection.removeAll(targetPaths);
+            return s.withRects(rects, index, newRoot, stats).withSelectedPaths(newSelection);
+        });
+    }
+
+    private void applyPruning(String targetPath, double width, double height) {
+        applyBatchPruning(Collections.singletonList(targetPath), width, height);
     }
 
     public void startScan(Path path, double width, double height, List<com.jdisktree.domain.ScanExclusion> exclusions) {

@@ -7,14 +7,20 @@ import androidx.compose.ui.graphics.Color
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun DeleteConfirmationDialog(
-    path: String,
+    paths: Set<String>,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val message = if (paths.size == 1) {
+        stringResource("delete_confirm_text", paths.first())
+    } else {
+        "${stringResource("delete_confirm_title")} (${paths.size} ${stringResource("prop_files")})"
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource("delete_confirm_title")) },
-        text = { Text(stringResource("delete_confirm_text", path)) },
+        text = { Text(message) },
         confirmButton = {
             Button(
                 onClick = onConfirm,

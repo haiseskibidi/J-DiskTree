@@ -14,12 +14,12 @@ import com.jdisktree.domain.FileColorConfig
 fun TreemapWithTooltip(
     stableData: StableTreemapData,
     index: SpatialGridIndex,
-    selectedPath: String?,
+    selectedPaths: Set<String>,
     highlightedExtension: String?,
     customColors: List<FileColorConfig> = emptyList(),
     isResizing: Boolean = false,
-    onSelect: (String) -> Unit,
-    onSecondaryClick: (String, Offset) -> Unit
+    onSelect: (String, Boolean) -> Unit, // path, isCtrl
+    onSecondaryClick: (Set<String>, Offset) -> Unit
 ) {
     var hoveredRect by remember { mutableStateOf<TreeMapRect?>(null) }
     var mousePosition by remember { mutableStateOf(Offset.Zero) }
@@ -28,7 +28,7 @@ fun TreemapWithTooltip(
         TreemapCanvas(
             rects = stableData.rects,
             index = index,
-            selectedPath = selectedPath,
+            selectedPaths = selectedPaths,
             highlightedExtension = highlightedExtension,
             customColors = customColors,
             baseWidth = 1000.0,

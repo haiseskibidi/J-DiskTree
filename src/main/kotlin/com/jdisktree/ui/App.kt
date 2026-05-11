@@ -41,10 +41,14 @@ fun App(
     var uiState by remember { mutableStateOf(UiState.idle()) }
     val viewModel = remember { ScanViewModel { newState -> uiState = newState } }
     var pathText by remember { mutableStateOf(System.getProperty("user.home")) }
-    var selectedPath by remember { mutableStateOf<String?>(null) }
-    var contextMenuPath by remember { mutableStateOf<String?>(null) }
+    
+    // Selection state (Sync with UiState)
+    val selectedPaths = uiState.selectedPaths()
+    var selectionAnchor by remember { mutableStateOf<String?>(null) }
+    
+    var contextMenuPaths by remember { mutableStateOf<Set<String>>(emptySet()) }
     var contextMenuOffset by remember { mutableStateOf(Offset.Zero) }
-    var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf<Set<String>?>(null) }
     var showProperties by remember { mutableStateOf<String?>(null) }
     var showSettings by remember { mutableStateOf(false) }
     var highlightedExtension by remember { mutableStateOf<String?>(null) }
@@ -56,11 +60,54 @@ fun App(
 
     // --- STABLE CALLBACKS ---
     val onWeightsChangeState = rememberUpdatedState(onWeightsChange)
-    val onSelect = remember { { path: String -> selectedPath = path } }
-    val onSecondaryClick = remember { { path: String, offset: Offset ->
-        contextMenuPath = path
+    
+    val onSelectMulti = remember { { path: String, isCtrl: Boolean, isShift: Boolean, visiblePaths: List<String> ->
+        val currentSelection = uiState.selectedPaths().toMutableSet()
+        
+        when {
+            isShift && selectionAnchor != null -> {
+                val anchorIdx = visiblePaths.indexOf(selectionAnchor)
+                val currentIdx = visiblePaths.indexOf(path)
+                if (anchorIdx != -1 && currentIdx != -1) {
+                    val start = minOf(anchorIdx, currentIdx)
+                    val end = maxOf(anchorIdx, currentIdx)
+                    val range = visiblePaths.subList(start, end + 1)
+                    if (!isCtrl) currentSelection.clear()
+                    currentSelection.addAll(range)
+                }
+            }
+            isCtrl -> {
+                if (currentSelection.contains(path)) currentSelection.remove(path)
+                else currentSelection.add(path)
+            }
+            else -> {
+                currentSelection.clear()
+                currentSelection.add(path)
+            }
+        }
+        
+        viewModel.setSelectedPaths(currentSelection)
+        selectionAnchor = path
+    } }
+
+    val onTreemapSelect = remember { { path: String, isCtrl: Boolean ->
+        val currentSelection = uiState.selectedPaths().toMutableSet()
+        if (isCtrl) {
+            if (currentSelection.contains(path)) currentSelection.remove(path)
+            else currentSelection.add(path)
+        } else {
+            currentSelection.clear()
+            currentSelection.add(path)
+        }
+        viewModel.setSelectedPaths(currentSelection)
+        selectionAnchor = path
+    } }
+
+    val onSecondaryClickMulti = remember { { paths: Set<String>, offset: Offset ->
+        contextMenuPaths = paths
         contextMenuOffset = offset
     } }
+
     val onStatsSelect = remember { { ext: String? -> highlightedExtension = ext } }
 
     val stableRoot = remember(uiState.rootNode()) { StableFileTree(uiState.rootNode()) }
@@ -152,10 +199,11 @@ fun App(
                                     Box(modifier = Modifier.weight(weights.treeWeight).fillMaxHeight().border(Dimens.BorderThin, Color.DarkGray)) {
                                         FileTreeView(
                                             stableRoot = stableRoot,
-                                            selectedPath = selectedPath,
+                                            selectedPaths = selectedPaths,
+                                            selectionAnchor = selectionAnchor,
                                             customColors = fileColors,
-                                            onSelect = onSelect,
-                                            onSecondaryClick = onSecondaryClick
+                                            onSelect = onSelectMulti,
+                                            onSecondaryClick = onSecondaryClickMulti
                                         )
                                     }
 
@@ -173,12 +221,12 @@ fun App(
                                         TreemapWithTooltip(
                                             stableData = stableRects,
                                             index = uiState.index(),
-                                            selectedPath = selectedPath,
+                                            selectedPaths = selectedPaths,
                                             highlightedExtension = highlightedExtension,
                                             customColors = fileColors,
                                             isResizing = resizingSide != ResizingSide.NONE,
-                                            onSelect = onSelect,
-                                            onSecondaryClick = onSecondaryClick
+                                            onSelect = onTreemapSelect,
+                                            onSecondaryClick = onSecondaryClickMulti
                                         )
                                     }
 
@@ -214,20 +262,20 @@ fun App(
                         }
 
                         // Global Context Menu
-                        contextMenuPath?.let { path ->
+                        if (contextMenuPaths.isNotEmpty()) {
                             val density = LocalDensity.current
                             val offsetX = with(density) { contextMenuOffset.x.toDp() }
                             val offsetY = with(density) { contextMenuOffset.y.toDp() }
 
                             Box(modifier = Modifier.offset(offsetX, offsetY)) {
                                 FileContextMenu(
-                                    path = path,
-                                    onDismiss = { contextMenuPath = null },
-                                    onOpenExplorer = { viewModel.openInExplorer(path) },
-                                    onCopyPath = { viewModel.copyPath(path) },
-                                    onMoveToTrash = { viewModel.moveToTrash(path, 1000.0, 1000.0) },
-                                    onDeletePermanently = { showDeleteConfirm = path },
-                                    onShowProperties = { showProperties = path }
+                                    paths = contextMenuPaths,
+                                    onDismiss = { contextMenuPaths = emptySet() },
+                                    onOpenExplorer = { path -> viewModel.openInExplorer(path) },
+                                    onCopyPath = { path -> viewModel.copyPath(path) },
+                                    onMoveToTrash = { paths -> viewModel.moveSelectedToTrash(paths, 1000.0, 1000.0) },
+                                    onDeletePermanently = { paths -> showDeleteConfirm = paths },
+                                    onShowProperties = { path -> showProperties = path }
                                 )
                             }
                         }
@@ -237,11 +285,11 @@ fun App(
         }
 
         // Dialogs
-        showDeleteConfirm?.let { path ->
+        showDeleteConfirm?.let { paths ->
             DeleteConfirmationDialog(
-                path = path,
+                paths = paths,
                 onConfirm = { 
-                    viewModel.deletePermanently(path, 1000.0, 1000.0)
+                    viewModel.deleteSelectedPermanently(paths, 1000.0, 1000.0)
                     showDeleteConfirm = null
                 },
                 onDismiss = { showDeleteConfirm = null }

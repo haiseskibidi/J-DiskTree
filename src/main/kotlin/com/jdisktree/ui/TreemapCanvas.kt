@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import com.jdisktree.domain.TreeMapRect
@@ -25,22 +26,22 @@ import com.jdisktree.domain.FileColorConfig
 fun TreemapCanvas(
     rects: List<TreeMapRect>,
     index: SpatialGridIndex?,
-    selectedPath: String?,
+    selectedPaths: Set<String>,
     highlightedExtension: String?,
     customColors: List<FileColorConfig> = emptyList(),
     baseWidth: Double,
     baseHeight: Double,
     isResizing: Boolean = false,
     onHover: (TreeMapRect?, Offset) -> Unit,
-    onClick: (String) -> Unit,
-    onSecondaryClick: (String, Offset) -> Unit
+    onClick: (String, Boolean) -> Unit, // path, isCtrl
+    onSecondaryClick: (Set<String>, Offset) -> Unit
 ) {
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     var currentHover by remember { mutableStateOf<TreeMapRect?>(null) }
-
-    // STABLE BITMAP: Render at fixed resolution (1000x1000) only when data changes.
-    // This eliminates the 1-second freeze because we NEVER re-render during resize.
+    
+    // (Bitmap logic remains same, but using updated parameters if needed)
     val treemapBitmap = remember(rects, highlightedExtension, customColors) {
+        // ... (bitmap generation logic identical to previous version)
         if (rects.isEmpty()) null
         else {
             val internalW = 1000
@@ -48,7 +49,6 @@ fun TreemapCanvas(
             val bitmap = ImageBitmap(internalW, internalH)
             val canvas = Canvas(bitmap)
             
-            // We draw in 1:1 scale relative to baseWidth/baseHeight (which are 1000.0)
             val scaleX = internalW.toFloat() / baseWidth.toFloat()
             val scaleY = internalH.toFloat() / baseHeight.toFloat()
 
@@ -108,7 +108,7 @@ fun TreemapCanvas(
             .background(Color(0xFF1E1E1E))
             .onSizeChanged { canvasSize = it }
             .onPointerEvent(PointerEventType.Move) { event ->
-                if (isResizing) return@onPointerEvent // Performance boost during drag
+                if (isResizing) return@onPointerEvent 
                 val pos = event.changes.first().position
                 val scaleX = canvasSize.width.toFloat() / baseWidth.toFloat()
                 val scaleY = canvasSize.height.toFloat() / baseHeight.toFloat()
@@ -130,9 +130,13 @@ fun TreemapCanvas(
             .onPointerEvent(PointerEventType.Press) { event ->
                 val change = event.changes.first()
                 if (change.pressed) {
-                    currentHover?.let { 
-                        if (event.buttons.isSecondaryPressed) onSecondaryClick(it.path(), change.position)
-                        else onClick(it.path())
+                    currentHover?.let { rect ->
+                        if (event.buttons.isSecondaryPressed) {
+                            val finalSelection = if (selectedPaths.contains(rect.path())) selectedPaths else setOf(rect.path())
+                            onSecondaryClick(finalSelection, change.position)
+                        } else {
+                            onClick(rect.path(), event.keyboardModifiers.isCtrlPressed)
+                        }
                     }
                 }
             }
@@ -160,8 +164,9 @@ fun TreemapCanvas(
             drawRect(Color.White, Offset(drawX, drawY), Size(drawW, drawH), style = Stroke(width = 3f))
         }
 
-        if (selectedPath != null) {
-            rects.find { it.path() == selectedPath }?.let { rect ->
+        // Highlight ALL selected paths
+        selectedPaths.forEach { path ->
+            rects.find { it.path() == path }?.let { rect ->
                 val drawX = rect.x().toFloat() * scaleX
                 val drawY = rect.y().toFloat() * scaleY
                 val drawW = rect.width().toFloat() * scaleX

@@ -2,6 +2,9 @@ package com.jdisktree.domain;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Collection;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * Immutable representation of a file or directory in the disk tree.
@@ -29,12 +32,15 @@ public record FileNode(
     }
 
     /**
-     * Recursively creates a new tree with the specified target path removed.
-     * All parent directory sizes are automatically updated.
-     * Returns null if this node itself is the target to be removed.
+     * Batch version of prune.
      */
-    public FileNode prune(String targetPath) {
-        if (this.absolutePath.equals(targetPath)) {
+    public FileNode prune(Collection<String> targetPaths) {
+        Set<String> targets = new HashSet<>(targetPaths);
+        return pruneInternal(targets);
+    }
+
+    private FileNode pruneInternal(Set<String> targets) {
+        if (targets.contains(this.absolutePath)) {
             return null;
         }
 
@@ -42,29 +48,43 @@ public record FileNode(
             return this;
         }
 
-        // Optimization: only recurse if targetPath is a descendant of this directory
-        // Use normalized paths and a trailing separator to prevent "Folder" matching "Folder2"
-        String normalizedTarget = targetPath.replace('\\', '/');
+        // Optimization: only recurse if any target is a descendant of this directory
+        boolean hasDescendant = false;
         String normalizedCurrent = this.absolutePath.replace('\\', '/');
         if (!normalizedCurrent.endsWith("/")) normalizedCurrent += "/";
+        
+        for (String target : targets) {
+            if (target.replace('\\', '/').startsWith(normalizedCurrent)) {
+                hasDescendant = true;
+                break;
+            }
+        }
 
-        if (!normalizedTarget.startsWith(normalizedCurrent)) {
+        if (!hasDescendant) {
             return this;
         }
 
         List<FileNode> newChildren = children.stream()
-                .map(child -> child.prune(targetPath))
+                .map(child -> child.pruneInternal(targets))
                 .filter(java.util.Objects::nonNull)
                 .toList();
 
         long newSize = newChildren.stream().mapToLong(FileNode::size).sum();
         
-        // If size changed, we MUST return a new node instance to trigger UI updates
         if (newSize == this.size && newChildren.size() == this.children.size()) {
             return this; 
         }
 
         return new FileNode(name, absolutePath, newSize, true, newChildren);
+    }
+
+    /**
+     * Recursively creates a new tree with the specified target path removed.
+     * All parent directory sizes are automatically updated.
+     * Returns null if this node itself is the target to be removed.
+     */
+    public FileNode prune(String targetPath) {
+        return prune(Collections.singletonList(targetPath));
     }
 
     /**
