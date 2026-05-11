@@ -1,28 +1,41 @@
 package com.jdisktree.state;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+import com.jdisktree.domain.FileColorConfig;
+
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.Reader;
+import java.io.Writer;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Properties;
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
- * Service responsible for saving and loading application preferences from the user's home directory.
+ * Service responsible for saving and loading application preferences and colors from the user's home directory.
  */
 public class PreferencesService {
 
     private static final String DIR_NAME = ".jdisktree";
-    private static final String FILE_NAME = "settings.properties";
+    private static final String SETTINGS_FILE = "settings.json";
+    private static final String COLORS_FILE = "colors.json";
 
     private final Path configPath;
+    private final Path colorsPath;
+    private final Gson gson;
 
     public PreferencesService() {
         String userHome = System.getProperty("user.home");
-        this.configPath = Paths.get(userHome, DIR_NAME, FILE_NAME);
+        Path dirPath = Paths.get(userHome, DIR_NAME);
+        this.configPath = dirPath.resolve(SETTINGS_FILE);
+        this.colorsPath = dirPath.resolve(COLORS_FILE);
+        this.gson = new GsonBuilder().setPrettyPrinting().create();
     }
 
     /**
@@ -70,16 +83,10 @@ public class PreferencesService {
             return AppPreferences.defaults();
         }
 
-        Properties props = new Properties();
-        try (InputStream is = Files.newInputStream(configPath)) {
-            props.load(is);
-            String lang = props.getProperty("language", "en");
-            boolean isDark = Boolean.parseBoolean(props.getProperty("dark_theme", "true"));
-            boolean showStats = Boolean.parseBoolean(props.getProperty("show_stats", "true"));
-            float treeWeight = Float.parseFloat(props.getProperty("tree_weight", "0.25"));
-            float statsWeight = Float.parseFloat(props.getProperty("stats_weight", "0.25"));
-            return new AppPreferences(lang, isDark, showStats, treeWeight, statsWeight);
-        } catch (IOException | NumberFormatException e) {
+        try (Reader reader = Files.newBufferedReader(configPath)) {
+            AppPreferences prefs = gson.fromJson(reader, AppPreferences.class);
+            return prefs != null ? prefs : AppPreferences.defaults();
+        } catch (Exception e) {
             e.printStackTrace();
             return AppPreferences.defaults();
         }
@@ -91,15 +98,58 @@ public class PreferencesService {
     public void save(AppPreferences prefs) {
         try {
             Files.createDirectories(configPath.getParent());
-            Properties props = new Properties();
-            props.setProperty("language", prefs.languageCode());
-            props.setProperty("dark_theme", String.valueOf(prefs.isDarkTheme()));
-            props.setProperty("show_stats", String.valueOf(prefs.showTypeStats()));
-            props.setProperty("tree_weight", String.valueOf(prefs.treeWidthWeight()));
-            props.setProperty("stats_weight", String.valueOf(prefs.statsWidthWeight()));
+            try (Writer writer = Files.newBufferedWriter(configPath)) {
+                gson.toJson(prefs, writer);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-            try (OutputStream os = Files.newOutputStream(configPath)) {
-                props.store(os, "J-DiskTree User Preferences");
+    /**
+     * Loads custom file colors from disk. Returns default populated list if not found.
+     */
+    public List<FileColorConfig> loadColors() {
+        if (!Files.exists(colorsPath)) {
+            return defaultColors();
+        }
+        try (Reader reader = Files.newBufferedReader(colorsPath)) {
+            Type listType = new TypeToken<ArrayList<FileColorConfig>>(){}.getType();
+            List<FileColorConfig> colors = gson.fromJson(reader, listType);
+            return colors != null && !colors.isEmpty() ? colors : defaultColors();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return defaultColors();
+        }
+    }
+
+    private List<FileColorConfig> defaultColors() {
+        return new ArrayList<>(List.of(
+                new FileColorConfig("exe", "FFEF5350"),
+                new FileColorConfig("dll", "FFEF5350"),
+                new FileColorConfig("sys", "FFEF5350"),
+                new FileColorConfig("jpg", "FF66BB6A"),
+                new FileColorConfig("png", "FF66BB6A"),
+                new FileColorConfig("mp4", "FF42A5F5"),
+                new FileColorConfig("mkv", "FF42A5F5"),
+                new FileColorConfig("mp3", "FFAB47BC"),
+                new FileColorConfig("pdf", "FFFFA726"),
+                new FileColorConfig("docx", "FFFFA726"),
+                new FileColorConfig("zip", "FF8D6E63"),
+                new FileColorConfig("rar", "FF8D6E63"),
+                new FileColorConfig("java", "FF26A69A"),
+                new FileColorConfig("kt", "FF26A69A")
+        ));
+    }
+
+    /**
+     * Saves custom file colors to disk.
+     */
+    public void saveColors(List<FileColorConfig> colors) {
+        try {
+            Files.createDirectories(colorsPath.getParent());
+            try (Writer writer = Files.newBufferedWriter(colorsPath)) {
+                gson.toJson(colors, writer);
             }
         } catch (IOException e) {
             e.printStackTrace();

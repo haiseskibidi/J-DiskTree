@@ -1,6 +1,7 @@
 package com.jdisktree.scanner;
 
 import com.jdisktree.domain.FileNode;
+import com.jdisktree.domain.ScanExclusion;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -23,13 +24,15 @@ public class DiskScannerService {
 
     private static final int MAX_DEPTH = 128; // Industry-standard safe depth
     private final ScanProgressListener listener;
+    private final List<ScanExclusion> exclusions;
     private final LongAdder totalFiles = new LongAdder();
     private final LongAdder totalBytes = new LongAdder();
     private final ConcurrentHashMap<String, Boolean> visitedCanonicalPaths = new ConcurrentHashMap<>();
     private volatile String currentPath = "";
 
-    public DiskScannerService(ScanProgressListener listener) {
+    public DiskScannerService(ScanProgressListener listener, List<ScanExclusion> exclusions) {
         this.listener = listener;
+        this.exclusions = exclusions != null ? exclusions : new ArrayList<>();
     }
 
     public FileNode scan(Path rootPath) {
@@ -78,9 +81,34 @@ public class DiskScannerService {
             this.depth = depth;
         }
 
+        private boolean isExcluded(Path path) {
+            if (exclusions.isEmpty()) return false;
+            String fileName = path.getFileName() != null ? path.getFileName().toString() : "";
+            String nameLower = fileName.toLowerCase();
+            
+            for (ScanExclusion exclusion : exclusions) {
+                if (!exclusion.isEnabled()) continue;
+                String pat = exclusion.pattern().toLowerCase();
+                
+                if (pat.startsWith("*.")) {
+                    if (nameLower.endsWith(pat.substring(1))) return true;
+                } else if (pat.startsWith(".")) {
+                    if (nameLower.endsWith(pat)) return true;
+                } else if (nameLower.equals(pat)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         @Override
         protected FileNode compute() {
             if (depth > MAX_DEPTH) return null;
+            
+            // Check exclusion before resolving canonical path to save I/O
+            if (isExcluded(dirPath)) {
+                return null;
+            }
 
             try {
                 // THE ONLY RELIABLE WAY ON WINDOWS: Resolve the CANONICAL (real) path.
@@ -109,13 +137,18 @@ public class DiskScannerService {
                             isRoot[0] = false;
                             return FileVisitResult.CONTINUE;
                         } else {
-                            subTasks.add(new DirectoryScanTask(dir, depth + 1));
+                            if (!isExcluded(dir)) {
+                                subTasks.add(new DirectoryScanTask(dir, depth + 1));
+                            }
                             return FileVisitResult.SKIP_SUBTREE;
                         }
                     }
 
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                        if (isExcluded(file)) {
+                            return FileVisitResult.CONTINUE;
+                        }
                         if (attrs.isDirectory()) {
                             subTasks.add(new DirectoryScanTask(file, depth + 1));
                         } else {

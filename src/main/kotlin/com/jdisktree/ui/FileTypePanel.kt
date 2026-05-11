@@ -18,10 +18,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.jdisktree.domain.FileTypeStat
 
+import com.jdisktree.domain.FileColorConfig
+
 @Composable
 fun FileTypePanel(
     stats: List<FileTypeStat>,
     selectedExtension: String?,
+    customColors: List<FileColorConfig> = emptyList(),
     onSelect: (String?) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(Dimens.SpacingMedium)) {
@@ -55,7 +58,7 @@ fun FileTypePanel(
                             Box(
                                 modifier = Modifier
                                     .size(Dimens.IconSmall)
-                                    .background(getColorForExtension(stat.extension), RoundedCornerShape(Dimens.RadiusSmall))
+                                    .background(getColorForExtension(stat.extension, customColors), RoundedCornerShape(Dimens.RadiusSmall))
                             )
                             Spacer(modifier = Modifier.width(Dimens.SpacingMedium))
                             Text(
@@ -77,7 +80,7 @@ fun FileTypePanel(
                     LinearProgressIndicator(
                         progress = stat.percentage.toFloat(),
                         modifier = Modifier.fillMaxWidth().height(Dimens.SpacingSmall).clip(RoundedCornerShape(Dimens.RadiusSmall)),
-                        color = getColorForExtension(stat.extension),
+                        color = getColorForExtension(stat.extension, customColors),
                         backgroundColor = Color.DarkGray
                     )
                     

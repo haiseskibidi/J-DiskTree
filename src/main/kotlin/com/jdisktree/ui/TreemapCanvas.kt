@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.IntSize
 import com.jdisktree.domain.TreeMapRect
 import com.jdisktree.treemap.index.SpatialGridIndex
 
+import com.jdisktree.domain.FileColorConfig
+
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun TreemapCanvas(
@@ -25,6 +27,7 @@ fun TreemapCanvas(
     index: SpatialGridIndex?,
     selectedPath: String?,
     highlightedExtension: String?,
+    customColors: List<FileColorConfig> = emptyList(),
     baseWidth: Double,
     baseHeight: Double,
     isResizing: Boolean = false, // Controlled by parent for optimization
@@ -37,7 +40,7 @@ fun TreemapCanvas(
 
     // SECRET WEAPON: We only re-draw the million rectangles if NOT resizing.
     // If resizing, we use the last stable bitmap and scale it via GPU.
-    val treemapBitmap = remember(rects, highlightedExtension, if (isResizing) null else canvasSize) {
+    val treemapBitmap = remember(rects, highlightedExtension, customColors, if (isResizing) null else canvasSize) {
         if (canvasSize.width <= 0 || canvasSize.height <= 0 || rects.isEmpty()) null
         else {
             val bitmap = ImageBitmap(canvasSize.width, canvasSize.height)
@@ -63,7 +66,7 @@ fun TreemapCanvas(
                     val drawW = rect.width().toFloat() * scaleX
                     val drawH = rect.height().toFloat() * scaleY
 
-                    var baseColor = getColorForExtension(rect.extension())
+                    var baseColor = getColorForExtension(rect.extension(), customColors)
                     if (highlightedExtension != null && rect.extension() != highlightedExtension) {
                         baseColor = baseColor.copy(alpha = 0.2f)
                     }

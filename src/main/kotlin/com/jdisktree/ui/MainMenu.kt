@@ -22,6 +22,7 @@ fun MainMenu(
     onThemeToggle: () -> Unit,
     onStatsToggle: () -> Unit,
     onNewScan: () -> Unit,
+    onOpenSettings: () -> Unit,
     onExit: () -> Unit
 ) {
     val strings = LocalStrings.current
@@ -94,6 +95,14 @@ fun MainMenu(
                         Text("✓", color = MaterialTheme.colors.primary, style = MaterialTheme.typography.body2)
                     }
                 }
+            }
+        }
+
+        MenuButton(strings.get("settings_menu")) { expanded ->
+            DropdownMenuItem(onClick = { onOpenSettings(); expanded.value = false },
+                contentPadding = PaddingValues(horizontal = 12.dp)
+            ) {
+                Text(strings.get("settings_menu"), style = MaterialTheme.typography.body2)
             }
         }
 

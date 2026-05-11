@@ -1,8 +1,16 @@
 package com.jdisktree.ui
 
 import androidx.compose.ui.graphics.Color
+import com.jdisktree.domain.FileColorConfig
 
-fun getColorForExtension(ext: String): Color {
+fun getColorForExtension(ext: String, customColors: List<FileColorConfig> = emptyList()): Color {
+    val custom = customColors.find { it.extension.equals(ext, ignoreCase = true) }
+    if (custom != null) {
+        try {
+            return Color(custom.hexColor.toLong(16))
+        } catch (e: Exception) {}
+    }
+    
     return when (ext.lowercase()) {
         "dir_block" -> AppColors.DirBlock
         "exe", "dll", "sys", "msi", "com" -> AppColors.Executable

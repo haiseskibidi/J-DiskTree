@@ -17,10 +17,16 @@ import com.jdisktree.state.ScanStatus
 import com.jdisktree.state.UiState
 import com.jdisktree.viewmodel.ScanViewModel
 
+import com.jdisktree.domain.FileColorConfig
+import com.jdisktree.domain.ScanExclusion
+import com.jdisktree.state.AppPreferences
+
 enum class ResizingSide { NONE, TREE, STATS }
 
 @Composable
 fun App(
+    appPrefs: AppPreferences,
+    fileColors: List<FileColorConfig>,
     isDarkTheme: Boolean = true,
     showTypeStatsInitial: Boolean = true,
     treeWeightInitial: Float = 0.25f,
@@ -29,6 +35,7 @@ fun App(
     onThemeToggle: () -> Unit = {},
     onStatsToggle: () -> Unit = {},
     onWeightsChange: (Float, Float) -> Unit = { _, _ -> },
+    onSettingsSave: (List<ScanExclusion>, List<FileColorConfig>) -> Unit = { _, _ -> },
     onExit: () -> Unit = {}
 ) {
     var uiState by remember { mutableStateOf(UiState.idle()) }
@@ -39,6 +46,7 @@ fun App(
     var contextMenuOffset by remember { mutableStateOf(Offset.Zero) }
     var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
     var showProperties by remember { mutableStateOf<String?>(null) }
+    var showSettings by remember { mutableStateOf(false) }
     var highlightedExtension by remember { mutableStateOf<String?>(null) }
     var showTypeStats by remember { mutableStateOf(showTypeStatsInitial) }
     
@@ -98,6 +106,7 @@ fun App(
                     onNewScan = { 
                         DirectoryPicker.pickDirectory()?.let { pickedPath -> pathText = pickedPath }
                     },
+                    onOpenSettings = { showSettings = true },
                     onExit = onExit
                 )
 
@@ -106,7 +115,8 @@ fun App(
                         uiState = uiState,
                         pathText = pathText,
                         onPathChange = { newPath -> pathText = newPath },
-                        viewModel = viewModel
+                        viewModel = viewModel,
+                        scanExclusions = appPrefs.scanExclusions()
                     )
 
                     Spacer(modifier = Modifier.height(Dimens.SpacingLarge))
@@ -143,6 +153,7 @@ fun App(
                                         FileTreeView(
                                             stableRoot = stableRoot,
                                             selectedPath = selectedPath,
+                                            customColors = fileColors,
                                             onSelect = onSelect,
                                             onSecondaryClick = onSecondaryClick
                                         )
@@ -164,6 +175,7 @@ fun App(
                                             index = uiState.index(),
                                             selectedPath = selectedPath,
                                             highlightedExtension = highlightedExtension,
+                                            customColors = fileColors,
                                             isResizing = resizingSide != ResizingSide.NONE,
                                             onSelect = onSelect,
                                             onSecondaryClick = onSecondaryClick
@@ -184,6 +196,7 @@ fun App(
                                             FileTypePanel(
                                                 stats = uiState.typeStats(),
                                                 selectedExtension = highlightedExtension,
+                                                customColors = fileColors,
                                                 onSelect = onStatsSelect
                                             )
                                         }
@@ -239,6 +252,19 @@ fun App(
             PropertiesDialog(
                 path = path,
                 onDismiss = { showProperties = null }
+            )
+        }
+        
+        if (showSettings) {
+            SettingsDialog(
+                initialExclusions = appPrefs.scanExclusions(),
+                initialColors = fileColors,
+                isDarkTheme = isDarkTheme,
+                onDismiss = { showSettings = false },
+                onSave = { newExclusions, newColors ->
+                    onSettingsSave(newExclusions, newColors)
+                    showSettings = false
+                }
             )
         }
     }

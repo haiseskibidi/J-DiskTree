@@ -10,36 +10,41 @@ fun main() {
     
     val prefsService = PreferencesService()
     val initialPrefs = prefsService.load()
+    val initialColors = prefsService.loadColors()
     val systemAccentColor = prefsService.windowsAccentColor
 
     application {
         val windowState = rememberWindowState(width = 1200.dp, height = 900.dp)
         
-        // Use loaded preferences for initial state
-        val initialLang = Language.entries.find { it.code == initialPrefs.languageCode() } ?: Language.EN
-        val localizationManager = remember { LocalizationManager(initialLang) }
-        var isDarkTheme by remember { mutableStateOf(initialPrefs.isDarkTheme()) }
-        var showTypeStats by remember { mutableStateOf(initialPrefs.showTypeStats()) }
-        var treeWeight by remember { mutableStateOf(initialPrefs.treeWidthWeight()) }
-        var statsWeight by remember { mutableStateOf(initialPrefs.statsWidthWeight()) }
+        // App State
+        var appPrefs by remember { mutableStateOf(initialPrefs) }
+        var fileColors by remember { mutableStateOf(initialColors) }
+
+        // Derived UI values
+        val initialLang = Language.entries.find { it.code == appPrefs.languageCode() } ?: Language.EN
+        val localizationManager = remember(appPrefs.languageCode()) { LocalizationManager(initialLang) }
+        var isDarkTheme by remember { mutableStateOf(appPrefs.isDarkTheme()) }
+        var showTypeStats by remember { mutableStateOf(appPrefs.showTypeStats()) }
+        var treeWeight by remember { mutableStateOf(appPrefs.treeWidthWeight()) }
+        var statsWeight by remember { mutableStateOf(appPrefs.statsWidthWeight()) }
 
         // Effect to save whenever any preference changes (debounced)
-        LaunchedEffect(isDarkTheme, localizationManager.currentLanguage, showTypeStats, treeWeight, statsWeight) {
-            if (isDarkTheme != initialPrefs.isDarkTheme() || 
-                localizationManager.currentLanguage.code != initialPrefs.languageCode() ||
-                showTypeStats != initialPrefs.showTypeStats() ||
-                treeWeight != initialPrefs.treeWidthWeight() ||
-                statsWeight != initialPrefs.statsWidthWeight()) {
-                
-                kotlinx.coroutines.delay(1000) // Debounce save to avoid disk churn during drag
-                prefsService.save(AppPreferences(
-                    localizationManager.currentLanguage.code, 
-                    isDarkTheme,
-                    showTypeStats,
-                    treeWeight,
-                    statsWeight
-                ))
-            }
+        LaunchedEffect(isDarkTheme, localizationManager.currentLanguage, showTypeStats, treeWeight, statsWeight, appPrefs.scanExclusions()) {
+            val newPrefs = AppPreferences(
+                localizationManager.currentLanguage.code,
+                isDarkTheme,
+                showTypeStats,
+                treeWeight,
+                statsWeight,
+                appPrefs.scanExclusions()
+            )
+            appPrefs = newPrefs
+            kotlinx.coroutines.delay(1000) // Debounce save to avoid disk churn during drag
+            prefsService.save(newPrefs)
+        }
+        
+        LaunchedEffect(fileColors) {
+            prefsService.saveColors(fileColors)
         }
 
         Window(
@@ -49,6 +54,8 @@ fun main() {
         ) {
             CompositionLocalProvider(LocalStrings provides localizationManager) {
                 App(
+                    appPrefs = appPrefs,
+                    fileColors = fileColors,
                     isDarkTheme = isDarkTheme,
                     showTypeStatsInitial = showTypeStats,
                     treeWeightInitial = treeWeight,
@@ -59,6 +66,17 @@ fun main() {
                     onWeightsChange = { t, s -> 
                         treeWeight = t
                         statsWeight = s
+                    },
+                    onSettingsSave = { exclusions, colors ->
+                        appPrefs = AppPreferences(
+                            appPrefs.languageCode(),
+                            appPrefs.isDarkTheme(),
+                            appPrefs.showTypeStats(),
+                            appPrefs.treeWidthWeight(),
+                            appPrefs.statsWidthWeight(),
+                            exclusions
+                        )
+                        fileColors = colors
                     },
                     onExit = { exitApplication() }
                 )

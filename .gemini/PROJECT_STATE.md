@@ -26,5 +26,12 @@
 - [x] **Stability Wrappers:** Introduced `@Immutable StableFileTree` and `StableTreemapData` to wrap Java records. This fixed the "unstable argument" issue in Compose, allowing heavy components like `FileTreeView` to properly skip recomposition.
 - [x] **Lag Elimination:** Verified that the File Tree no longer lags during dynamic scaling, as the expensive tree-flattening logic is now only triggered by actual data changes, not UI layout updates.
 
+## Phase 14: Settings & Configuration - [COMPLETED]
+- [x] **Advanced Compact UI:** Designed a professional `SettingsDialog.kt` using a compact `600x450 dp` fixed size. Switched from long vertical lists to an adaptive **Grid/Chip layout** (`LazyVerticalGrid`), increasing data density by 3x.
+- [x] **Dynamic Color System:** Implemented real-time color updates. Treemap now invalidates its internal `ImageBitmap` cache immediately when colors are saved, allowing users to see changes without re-scanning.
+- [x] **Wildcard Scan Exclusions:** Updated `DiskScannerService` to support smart patterns like `*.mp4`, `.idea`, or `node_modules`. Added a circular toggle switch (`CustomCheckbox`) and deletion for every exclusion entry.
+- [x] **Dark-Themed Color Picker:** Integrated **FlatLaf** library to provide a beautiful, theme-aware native `JColorChooser` with HSV as the default tab.
+- [x] **Single Source of Truth:** Migrated all preferences (Exclusions & Colors) to structured JSON storage (`settings.json`, `colors.json`) via **Gson**, ensuring a robust configuration layer.
+
 ## Summary
 J-DiskTree is now a production-ready disk space analyzer. It features a world-class parallel scanning engine with cycle protection, a modern modular UI with bi-directional synchronization, and full support for file management and localization. The application is fully packaged for Windows with automatic shortcuts and persistent user settings.

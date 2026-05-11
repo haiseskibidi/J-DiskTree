@@ -35,7 +35,7 @@ public class ScannerManualTest {
             Files.write(tempDir.resolve("root_file.txt"), new byte[50]);
 
             List<ScanProgress> progressUpdates = Collections.synchronizedList(new ArrayList<>());
-            DiskScannerService scanner = new DiskScannerService(progressUpdates::add);
+            DiskScannerService scanner = new DiskScannerService(progressUpdates::add, Collections.emptyList());
 
             System.out.println("Starting scan of: " + tempDir);
             FileNode root = scanner.scan(tempDir);

@@ -83,7 +83,7 @@ public class ScanViewModel {
         updateState(s -> s.withRects(rects, index, newRoot, stats));
     }
 
-    public void startScan(Path path, double width, double height) {
+    public void startScan(Path path, double width, double height, List<com.jdisktree.domain.ScanExclusion> exclusions) {
         updateState(s -> UiState.idle().withProgress(null)); 
 
         CompletableFuture.runAsync(() -> {
@@ -94,7 +94,7 @@ public class ScanViewModel {
                         updateState(s -> s.withProgress(progress));
                         lastProgressUpdate = now;
                     }
-                });
+                }, exclusions);
 
                 long scanStart = System.currentTimeMillis();
                 FileNode root = scanner.scan(path);

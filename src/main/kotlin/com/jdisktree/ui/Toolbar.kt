@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.jdisktree.state.ScanStatus
 import com.jdisktree.state.UiState
 import com.jdisktree.viewmodel.ScanViewModel
+import com.jdisktree.domain.ScanExclusion
 import java.nio.file.Paths
 
 @Composable
@@ -19,7 +20,8 @@ fun Toolbar(
     uiState: UiState,
     pathText: String,
     onPathChange: (String) -> Unit,
-    viewModel: ScanViewModel
+    viewModel: ScanViewModel,
+    scanExclusions: List<ScanExclusion>
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -35,7 +37,7 @@ fun Toolbar(
         )
         Spacer(modifier = Modifier.width(8.dp))
         OutlinedButton(
-            onClick = { 
+            onClick = {
                 DirectoryPicker.pickDirectory()?.let { onPathChange(it) }
             },
             enabled = uiState.status() != ScanStatus.SCANNING && uiState.status() != ScanStatus.CALCULATING_TREEMAP
@@ -44,8 +46,8 @@ fun Toolbar(
         }
         Spacer(modifier = Modifier.width(8.dp))
         Button(
-            onClick = { 
-                viewModel.startScan(Paths.get(pathText), 1000.0, 1000.0) 
+            onClick = {
+                viewModel.startScan(Paths.get(pathText), 1000.0, 1000.0, scanExclusions)
             },
             enabled = uiState.status() != ScanStatus.SCANNING && uiState.status() != ScanStatus.CALCULATING_TREEMAP
         ) {

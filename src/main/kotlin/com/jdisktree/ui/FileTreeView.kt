@@ -23,6 +23,8 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import com.jdisktree.domain.FileNode
 import java.nio.file.Paths
 
+import com.jdisktree.domain.FileColorConfig
+
 data class FlatNode(
     val fileNode: FileNode,
     val level: Int,
@@ -34,6 +36,7 @@ data class FlatNode(
 fun FileTreeView(
     stableRoot: StableFileTree,
     selectedPath: String?,
+    customColors: List<FileColorConfig> = emptyList(),
     onSelect: (String) -> Unit,
     onSecondaryClick: (String, Offset) -> Unit
 ) {
@@ -172,7 +175,7 @@ fun FileTreeView(
                         val dotIndex = node.name().lastIndexOf('.')
                         if (dotIndex > 0) node.name().substring(dotIndex + 1) else ""
                     }
-                    val color = getColorForExtension(ext)
+                    val color = getColorForExtension(ext, customColors)
 
                     Box(modifier = Modifier.size(Dimens.IconSmall).background(color, RoundedCornerShape(Dimens.RadiusSmall)))
 

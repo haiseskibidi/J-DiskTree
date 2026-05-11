@@ -8,12 +8,15 @@ import androidx.compose.ui.geometry.Offset
 import com.jdisktree.domain.TreeMapRect
 import com.jdisktree.treemap.index.SpatialGridIndex
 
+import com.jdisktree.domain.FileColorConfig
+
 @Composable
 fun TreemapWithTooltip(
     stableData: StableTreemapData,
-    index: SpatialGridIndex?,
+    index: SpatialGridIndex,
     selectedPath: String?,
     highlightedExtension: String?,
+    customColors: List<FileColorConfig> = emptyList(),
     isResizing: Boolean = false,
     onSelect: (String) -> Unit,
     onSecondaryClick: (String, Offset) -> Unit
@@ -27,6 +30,7 @@ fun TreemapWithTooltip(
             index = index,
             selectedPath = selectedPath,
             highlightedExtension = highlightedExtension,
+            customColors = customColors,
             baseWidth = 1000.0,
             baseHeight = 1000.0,
             isResizing = isResizing,
