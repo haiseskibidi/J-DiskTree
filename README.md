@@ -30,11 +30,17 @@ High-performance disk space analyzer and visualizer built with Java 21 and Compo
 ./gradlew run
 ```
 
-### Building a distribution
+### Building a Windows Installer (MSI)
 ```powershell
-./gradlew packageDistributionForCurrentOS
+./gradlew packageMsi
 ```
-*Packages will be available in `build/compose/binaries`.*
+*The installer will be available in `build/compose/binaries/main-release/msi/`.*
+
+### Building a Portable Archive (ZIP)
+```powershell
+./gradlew packagePortableZip
+```
+*The portable ZIP archive will be available in `build/distributions/`.*
 
 ## Tech Stack
 - **Language**: Kotlin & Java 21

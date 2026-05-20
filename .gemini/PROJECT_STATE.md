@@ -1,4 +1,4 @@
-# Project State: J-DiskTree (v1.4.0)
+# Project State: J-DiskTree (v1.4.1)
 
 ## Phase 9: Extreme High-Performance Engine Redesign - [COMPLETED]
 - [x] **Parallel I/O Engine:** Replaced single-threaded `Files.walkFileTree` with a custom `ForkJoinPool` architecture implementing "Directory-Granular Parallelism". 
@@ -49,5 +49,9 @@
 - [x] **State Persistence:** UI now persists folder expansion state across scans and mode switches, ensuring a seamless analysis experience.
 - [x] **v1.4.0 Milestone:** Reached a new level of disk forensics capability.
 
+## Phase 17: Disk Space Visualization - [COMPLETED]
+- [x] **Disk Metrics:** Added domain model `DiskSpaceInfo` and logic in `ScanViewModel` to query `java.nio.file.FileStore` for real-time disk capacity metrics at the end of every scan.
+- [x] **UI Integration:** Updated `StatusBanner` to beautifully display drive name, used vs free space ratio, and a `LinearProgressIndicator` to visualize disk capacity alongside the currently scanned space.
+
 ## Summary
-J-DiskTree is now a production-ready, high-performance disk space analyzer and forensics tool. It features a world-class parallel scanning engine, a recursive snapshot comparison system, and an intelligent real-time search with background rendering. The application supports advanced multi-selection, bi-directional synchronization, and liquid-smooth GPU-accelerated graphics. Fully packaged for Windows with persistent user settings, CSV/JSON export capabilities, and comprehensive localization support.
+J-DiskTree is now a production-ready, high-performance disk space analyzer and forensics tool. It features a world-class parallel scanning engine, a recursive snapshot comparison system, and an intelligent real-time search with background rendering. The application supports advanced multi-selection, bi-directional synchronization, liquid-smooth GPU-accelerated graphics, and deep visibility into system-level disk capacity. Fully packaged for Windows with persistent user settings, CSV/JSON export capabilities, and comprehensive localization support.

@@ -3,6 +3,7 @@ package com.jdisktree.viewmodel;
 import com.jdisktree.domain.FileNode;
 import com.jdisktree.domain.FileTypeStat;
 import com.jdisktree.domain.TreeMapRect;
+import com.jdisktree.domain.DiskSpaceInfo;
 import com.jdisktree.scanner.DiskScannerService;
 import com.jdisktree.scanner.FileOperationsService;
 import com.jdisktree.state.UiState;
@@ -18,6 +19,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.FileStore;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -218,6 +221,15 @@ public class ScanViewModel {
                 updateState(s -> s.withRects(rects, index, root, stats));
                 long updateEnd = System.currentTimeMillis();
                 System.out.println("State update (EDT handoff) took: " + (updateEnd - updateStart) + " ms");
+
+                // Fetch disk space info
+                try {
+                    FileStore store = Files.getFileStore(path);
+                    DiskSpaceInfo diskInfo = new DiskSpaceInfo(store.getTotalSpace(), store.getUsableSpace(), store.name());
+                    updateState(s -> s.withDiskSpaceInfo(diskInfo));
+                } catch (Exception e) {
+                    System.err.println("Could not fetch disk space info: " + e.getMessage());
+                }
 
             } catch (Exception e) {
                 updateState(s -> s.withError("Scan failed: " + e.getMessage()));
