@@ -53,5 +53,13 @@
 - [x] **Disk Metrics:** Added domain model `DiskSpaceInfo` and logic in `ScanViewModel` to query `java.nio.file.FileStore` for real-time disk capacity metrics at the end of every scan.
 - [x] **UI Integration:** Updated `StatusBanner` to beautifully display drive name, used vs free space ratio, and a `LinearProgressIndicator` to visualize disk capacity alongside the currently scanned space.
 
+## Phase 18: Professional Testing & OSS Grant Documentation - [COMPLETED]
+- [x] **Robust Test Suite:** Converted outdated, broken main-method manual runners to a complete automated JUnit test suite. Added integration tests covering parallel size aggregation and dynamic file extension groupings.
+- [x] **Cycle & Loop Prevention Test:** Developed a platform-resilient test that dynamically generates real NTFS directory junctions on Windows (via `mklink /j`) and symlinks on Unix to guarantee that the parallel scanner gracefully detects and breaks infinite filesystem loops.
+- [x] **Wildcard Exclusion Test:** Verified the matching engine correctly ignores system patterns like `*.mp4`, `.pdf` and custom exclusions.
+- [x] **Treemap & Bounds Test:** Tested mathematical correctness of the Squarified Treemap layout, asserting bounds calculation and sliver recursion clipping.
+- [x] **README & Benchmarks Overhaul:** Rewrote the readme with premium developer badges, performance comparison tables against WinDirStat/QDirStat, details on virtualized `LazyColumn` memory optimization, and MVI architecture diagram for the Claude OSS Grant program.
+
 ## Summary
-J-DiskTree is now a production-ready, high-performance disk space analyzer and forensics tool. It features a world-class parallel scanning engine, a recursive snapshot comparison system, and an intelligent real-time search with background rendering. The application supports advanced multi-selection, bi-directional synchronization, liquid-smooth GPU-accelerated graphics, and deep visibility into system-level disk capacity. Fully packaged for Windows with persistent user settings, CSV/JSON export capabilities, and comprehensive localization support.
+J-DiskTree is now a production-ready, high-performance disk space analyzer and forensics tool. It features a world-class parallel scanning engine, a recursive snapshot comparison system, and an intelligent real-time search with background rendering. The application supports advanced multi-selection, bi-directional synchronization, liquid-smooth GPU-accelerated graphics, and deep visibility into system-level disk capacity. Fully verified with a platform-agnostic automated test suite for I/O loop protection and layout calculations, J-DiskTree is fully optimized and ready for deployment and open-source grant applications.
+
